@@ -4,11 +4,11 @@ from bs4 import BeautifulSoup
 import sqlite3
 import os
 
-def get_sessions(url, c):
-    response = requests.get(url)
+def get_sessions(get_url,output_dir, c):
+    response = requests.get(get_url)
     if response.status_code == 200:
         soup = BeautifulSoup(response.content, 'html.parser')
-        for a_tag in soup.find_all('a'):
+        for a_tag in soup.find_all('a')[2:]:
             url = a_tag.get('href')
             if "thesession" not in url and "bd" not in url:
                 time_7pm = "19:00:00"  # 7:00 PM in HH:MM:SS format
@@ -18,13 +18,18 @@ def get_sessions(url, c):
                 timestamp_1030pm = f"{date_today} {time_1030pm}"
                 c.execute("INSERT INTO Session (location_id, session_date, start_time, end_time, description) VALUES (1, date(?), ?, ?, '')", 
                           (date_today, timestamp_7pm, timestamp_1030pm))
+                c.execute('SELECT session_id FROM Session WHERE session_date = date(?)', (date_today,))
+                session_id = c.lastrowid
+                print(get_url + url)
+                get_tunes(get_url + url, output_dir, session_id, c)
     else:
         print(f"Failed to retrieve content from {url}. Status code: {response.status_code}")
 
-def get_tunes(url,output_dir, c):
+def get_tunes(url,output_dir,session_id,c):
     response = requests.get(url)
     if response.status_code == 200:
         soup = BeautifulSoup(response.content, 'html.parser')
+        set_index = 1
         for li in soup.find_all('li'):
             set_song_names = []
             set_song_ids = []
@@ -38,15 +43,9 @@ def get_tunes(url,output_dir, c):
                     href_str = a_tag.get("href")
                     download_url = ""
                     if '#' in href_str:
-                        setting = int(href_str.split("#setting")[-1])
-                        tune_id = int(href_str.split("#")[0].split("/")[-1])
                         download_url = href_str.split("#")[0] + "/abc"
-                        if setting != tune_id:
-                            download_url += "/2"
-                        else:
-                            download_url += "/1"
                     else:
-                        download_url = href_str + "/abc/1"
+                        download_url = href_str + "/abc"
                     key = ""
                     download_file(download_url, abc_path)
                     with open(abc_path, 'r') as f:
@@ -55,16 +54,24 @@ def get_tunes(url,output_dir, c):
                             if "K:" in line:
                                 key = line.split(" ")[-1]
                                 break
-                    c.execute('INSERT INTO Tune (name, abc_path, key) VALUES (?, ?, ?)', (name, abc_path, key))
+                    c.execute('INSERT INTO Tune (name, abc_path, key, session_url) VALUES (?, ?, ?, ?)', (name, abc_path, key, href_str))
                     c.execute("SELECT tune_id FROM Tune WHERE name = ?", (name,))
                     tune_id = c.fetchone()
                     set_song_ids.append(tune_id[0])
             set_description = ','.join(set_song_names)
-            c.execute('INSERT INTO SetTable (description) VALUES (?)', (set_description,))
             c.execute('SELECT set_id FROM SetTable WHERE description = ?', (set_description,))
-            set_id = c.fetchone()[0]
+            result = c.fetchone()
+            set_id = 0
+            if not result:
+                c.execute('INSERT INTO SetTable (description) VALUES (?)', (set_description,))
+                set_id = c.lastrowid
+            else:
+                set_id = result[0]
             for i in range(len(set_song_ids)):
                c.execute('INSERT INTO TuneToSet (tune_id, set_id, tune_index) VALUES (?, ?, ?)', (set_song_ids[i], set_id, i + 1)) 
+            c.execute('INSERT INTO SetToSession (session_id, set_id, set_index) VALUES (?, ?, ?)', (session_id, set_id, set_index))
+            set_index += 1
+
 
     else:
         print(f"Failed to retrieve content from {url}. Status code: {response.status_code}")
@@ -93,7 +100,6 @@ if __name__ == "__main__":
 
     conn = sqlite3.connect(args.db_file)
     c = conn.cursor()
-    #get_sessions(args.url, c)
-    get_tunes(args.url + "2020-03-12.html",args.output_dir, c)
+    get_sessions(args.url, args.output_dir, c)
     conn.commit()
     conn.close()
