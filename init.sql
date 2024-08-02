@@ -17,7 +17,7 @@ CREATE TABLE Location (
 
 CREATE TABLE SetTable (
   set_id INTEGER PRIMARY KEY,
-  description TEXT -- OPTIONAL removed as it's not a valid keyword in SQL
+  description TEXT
 );
 
 CREATE TABLE Tune (
