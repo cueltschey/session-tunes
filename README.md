@@ -1,6 +1,6 @@
 # Session Tunes
 
-Use cases:
+## Use Cases
 1. Identify tunes to learn
 1. Search for tunes based on tune characteristics
 1. Enable practicing tunes by playing multiple tunes as a set
@@ -13,12 +13,17 @@ Use cases:
 1. Update session data live using wave file (autorecognition)
 1. Interface for building a set of tunes
 
-development environment:
+## Development Environment
 
 Install [node.js](https://nodejs.org/en) with all dependencies.<br>
 Change directories into the root of this repo on your local.<br>
-Run:
+
 ```
 npm i express sqlite3
 npm run start
 ```
+
+## Database Schema
+
+![Database Schema](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://github.com/cueltschey/session-tunes/main/schema.puml)
+
