@@ -25,5 +25,5 @@ npm run start
 
 ## Database Schema
 
-![Database Schema](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://github.com/cueltschey/session-tunes/main/schema.puml)
+![Database Schema](schema.svg)
 
