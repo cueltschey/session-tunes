@@ -15,7 +15,9 @@ Use cases:
 
 development environment:
 
-Insall nodejs and npm > v13 then run:
+Install [node.js](https://nodejs.org/en) with all dependencies.<br>
+Change directories into the root of this repo on your local.<br>
+Run:
 ```
 npm i express sqlite3
 npm run start
