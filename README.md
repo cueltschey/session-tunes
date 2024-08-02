@@ -14,3 +14,9 @@ Use cases:
 1. Interface for building a set of tunes
 
 development environment:
+
+Insall nodejs and npm > v13 then run:
+```
+npm i express sqlite3
+npm run start
+```
