@@ -1,29 +1,83 @@
+#!python3
+r"""
+
+py -m pip install requests
+py -m pip install bs4
+
+"""
+
 import argparse
 import requests
 from bs4 import BeautifulSoup
 import sqlite3
 import os
+import pathlib
+import sys
+import re
+from datetime import datetime, time
 
-def get_sessions(get_url,output_dir, c):
+
+re_session_url = re.compile(r'\d')
+def ceol_session_info_tuples(ceol_url):
+    """
+    Yields information for each session url from https://ceol.io/sessions/austin/mueller/
+    """
+    # Define start and end times, these are hard coded for this set of sessions.
+    location_id = 1
+    start_time = time(19, 0)  # 7:00 PM
+    end_time = time(22, 30)   # 10:30 PM
+    session_description = "B.D.Riley Thursday Session at Mueller in Austin, Texas."
+
+    response = requests.get(ceol_url)
+    if response.status_code != 200:
+        print(f"Failed to retrieve content from {ceol_url}. Status code: {response.status_code}")
+        return
+    soup = BeautifulSoup(response.content, 'html.parser')
+    for a_tag in soup.find_all('a'):
+        href = a_tag.get("href")
+        try:
+            session_date = datetime.strptime(href.split(".")[0], '%Y-%m-%d')
+        except ValueError:
+            continue
+        session_url = ceol_url + href
+        yield session_url, location_id, session_date, start_time, end_time, session_description
+
+
+def get_sessions(get_url, output_dir, cursor):
+    """
+    parses https://ceol.io/sessions/austin/mueller/
+    """
     response = requests.get(get_url)
-    if response.status_code == 200:
-        soup = BeautifulSoup(response.content, 'html.parser')
-        for a_tag in soup.find_all('a')[2:]:
-            url = a_tag.get('href')
-            if "thesession" not in url and "bd" not in url:
-                time_7pm = "19:00:00"  # 7:00 PM in HH:MM:SS format
-                time_1030pm = "22:30:00"  # 10:30 PM in HH:MM:SS format
-                date_today = url.split(".")[0]
-                timestamp_7pm = f"{date_today} {time_7pm}"
-                timestamp_1030pm = f"{date_today} {time_1030pm}"
-                c.execute("INSERT INTO Session (location_id, session_date, start_time, end_time, description) VALUES (1, date(?), ?, ?, '')", 
-                          (date_today, timestamp_7pm, timestamp_1030pm))
-                c.execute('SELECT session_id FROM Session WHERE session_date = date(?)', (date_today,))
-                session_id = c.lastrowid
-                print(get_url + url)
-                get_tunes(get_url + url, output_dir, session_id, c)
-    else:
+    if response.status_code != 200:
         print(f"Failed to retrieve content from {url}. Status code: {response.status_code}")
+        return
+    soup = BeautifulSoup(response.content, 'html.parser')
+    for a_tag in soup.find_all('a')[2:]:
+        # Skipping these two anchors with the slice, [2:]
+        # <h2 id="subcategories"><a href="../">Austin, TX</a> • BD Riley's @ Mueller</h2>
+        # <p>This session is held on Thursday evenings at <a href="https://bdrileys.com/">BD Riley's Mueller</a>, from 7-11pm. More on <a href="https://thesession.org/sessions/6247">TheSession.org</a>.</p>
+        url = a_tag.get('href')
+        if "thesession" in url or "bd" in url:
+            # Skipping this type of anchor
+            # <a href="https://thesession.org/tunes/9#setting9">Banish Misfortune</a><font color="#DDDDDD">  (98)</font><br>
+            continue
+        # hard coding sesssion information for start and end time
+        time_7pm = "19:00:00"  # 7:00 PM in HH:MM:SS format
+        time_1030pm = "22:30:00"  # 10:30 PM in HH:MM:SS format
+        # extract the data of the session from the url
+        #<li><a href="2024-07-18.html">2024-07-18</a></li>
+        session_date = url.split(".")[0]
+        # create the timestamps by merging date and time
+        timestamp_7pm = f"{session_date} {time_7pm}"
+        timestamp_1030pm = f"{session_date} {time_1030pm}"
+        #
+        cursor.execute("INSERT INTO Session (location_id, session_date, start_time, end_time, description) VALUES (1, date(?), ?, ?, '')",
+                  (session_date, timestamp_7pm, timestamp_1030pm))
+        cursor.execute('SELECT session_id FROM Session WHERE session_date = date(?)', (session_date,))
+        session_id = cursor.lastrowid
+        print(get_url + url)
+        get_tunes(get_url + url, output_dir, session_id, cursor)
+
 
 def get_tunes(url,output_dir,session_id,c):
     response = requests.get(url)
@@ -91,15 +145,66 @@ def download_file(url, filepath):
     except Exception as e:
         print(f"An error occurred: {e}")
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Extract URLs from <a> tags on a given HTML page.")
-    parser.add_argument("url", type=str, help="URL of the HTML page to parse")
-    parser.add_argument("db_file", type=str, help="The file of the database to write to")
-    parser.add_argument("output_dir", type=str, help="Where to download abc files to")
-    args = parser.parse_args()
 
-    conn = sqlite3.connect(args.db_file)
-    c = conn.cursor()
-    get_sessions(args.url, args.output_dir, c)
-    conn.commit()
-    conn.close()
+def parse():
+    current_script_path = pathlib.Path(__file__).resolve()
+    repo_root = current_script_path.parent.parent.parent
+    #print(f"{current_script_path=}, {repo_root=}")
+    parser = argparse.ArgumentParser(
+        description="Extract URLs from <a> tags on a given HTML page.")
+    parser.add_argument(
+        "--url",
+        type=str,
+        default="https://ceol.io/sessions/austin/mueller/",
+        help="URL of the HTML page to parse")
+    parser.add_argument(
+        "--db_file",
+        type=pathlib.Path,
+        default=repo_root / "session.db",
+        help="The file of the database to write to")
+    parser.add_argument(
+        "--output_dir",
+        type=pathlib.Path,
+        default=repo_root / "abc_files",
+        help="Where to download abc files to")
+    parser.add_argument(
+        "--schema_file",
+        type=pathlib.Path,
+        default=repo_root / "init.sql",
+        help="Filepath for a file containing the SQL commands that initialize the database")
+    # newrel: consider validating these args or possibly making the output_dir
+    # if it does not exist
+    return parser.parse_args()
+
+
+def main():
+    args = parse()
+    print(args)
+
+    with sqlite3.connect(args.db_file) as conn:
+        cursor = conn.cursor()
+
+        # Read the schema file
+        with open(args.schema_file, 'r') as f:
+            schema = f.read()
+            # Execute the SQL commands
+            cursor.executescript(schema)
+
+        for session_url, location_id, session_date, start_time, end_time, session_description in ceol_session_info_tuples(args.url):
+            print(f"{session_url=}, {location_id=}, {session_date=}, {start_time=}, {end_time=}, {session_description=}")
+            cursor.execute(
+                "INSERT INTO Session (location_id, session_date, start_time, end_time, description) VALUES (?, date(?), ?, ?, ?)",
+                (
+                    location_id,
+                    session_date.strftime('%Y-%m-%d'),
+                    start_time.strftime('%H:%M:%S'),
+                    end_time.strftime('%H:%M:%S'),
+                    session_description))
+
+
+
+
+
+if __name__ == "__main__":
+    rc = main()
+    sys.exit(rc)

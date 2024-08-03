@@ -2,8 +2,8 @@ CREATE TABLE Session (
   session_id INTEGER PRIMARY KEY,
   location_id INTEGER,
   session_date DATE,
-  start_time TIMESTAMP,
-  end_time TIMESTAMP,
+  start_time TIME,
+  end_time TIME,
   description TEXT,
   FOREIGN KEY (location_id) REFERENCES Location(location_id)
 );
