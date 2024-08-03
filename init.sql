@@ -23,7 +23,7 @@ CREATE TABLE SetTable (
 CREATE TABLE Tune (
   tune_id INTEGER PRIMARY KEY,
   name VARCHAR(255),
-  abc_path VARCHAR(255),
+  abc TEXT,
   key VARCHAR(255),
   session_url VARCHAR(255)
 );

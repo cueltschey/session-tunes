@@ -42,6 +42,27 @@ def ceol_session_info_tuples(ceol_url):
         session_url = ceol_url + href
         yield session_url, location_id, session_date, start_time, end_time, session_description
 
+def ceol_tune_info_tuplets(ceol_url, session_url):
+    """
+    Yields tune information for each session at mueller https://ceol.io/sessions/austin/mueller/{session_date}.html
+    """
+    response = requests.get(ceol_url + '/' + session_url)
+    if response.status_code != 200:
+        print(f"Failed to retrieve content from {ceol_url}. Status code: {response.status_code}")
+        return
+    soup = BeautifulSoup(response.content, 'html.parser')
+    set_index = 1
+    for li in soup.find_all('li'):
+        for a_tag in li.find_all('a'):
+            name = a_tag.text
+            session_url = a_tag.get("href")
+            tune_id = session_url.split("#")[0].split('/')[-1]
+            set_index
+            yield name, session_url, tune_id, set_index
+        set_index += 1
+
+
+
 
 def get_sessions(get_url, output_dir, cursor):
     """
@@ -81,69 +102,54 @@ def get_sessions(get_url, output_dir, cursor):
 
 def get_tunes(url,output_dir,session_id,c):
     response = requests.get(url)
-    if response.status_code == 200:
-        soup = BeautifulSoup(response.content, 'html.parser')
-        set_index = 1
-        for li in soup.find_all('li'):
-            set_song_names = []
-            set_song_ids = []
-            for a_tag in li.find_all('a'):
-                name = a_tag.text
-                set_song_names.append(name)
-                c.execute("SELECT 1 FROM Tune WHERE name = ?", (name,))
-                result = c.fetchone()
-                if not result:
-                    abc_path = os.path.join(output_dir, name.replace(' ', '').replace('\'', '').lower() + ".abc")
-                    href_str = a_tag.get("href")
-                    download_url = ""
-                    if '#' in href_str:
-                        download_url = href_str.split("#")[0] + "/abc"
-                    else:
-                        download_url = href_str + "/abc"
-                    key = ""
-                    download_file(download_url, abc_path)
-                    with open(abc_path, 'r') as f:
-                        abc_lines = f.readlines()
-                        for line in abc_lines:
-                            if "K:" in line:
-                                key = line.split(" ")[-1]
-                                break
-                    c.execute('INSERT INTO Tune (name, abc_path, key, session_url) VALUES (?, ?, ?, ?)', (name, abc_path, key, href_str))
-                    c.execute("SELECT tune_id FROM Tune WHERE name = ?", (name,))
-                    tune_id = c.fetchone()
-                    set_song_ids.append(tune_id[0])
-            set_description = ','.join(set_song_names)
-            c.execute('SELECT set_id FROM SetTable WHERE description = ?', (set_description,))
-            result = c.fetchone()
-            set_id = 0
-            if not result:
-                c.execute('INSERT INTO SetTable (description) VALUES (?)', (set_description,))
-                set_id = c.lastrowid
-            else:
-                set_id = result[0]
-            for i in range(len(set_song_ids)):
-               c.execute('INSERT INTO TuneToSet (tune_id, set_id, tune_index) VALUES (?, ?, ?)', (set_song_ids[i], set_id, i + 1)) 
-            c.execute('INSERT INTO SetToSession (session_id, set_id, set_index) VALUES (?, ?, ?)', (session_id, set_id, set_index))
-            set_index += 1
-
-
-    else:
+    if response.status_code != 200:
         print(f"Failed to retrieve content from {url}. Status code: {response.status_code}")
+        return
 
-def download_file(url, filepath):
-    try:
-        response = requests.get(url, stream=True)
-        
-        if response.status_code == 200:
-            with open(filepath, 'wb') as file:
-                for chunk in response.iter_content(chunk_size=8192):
-                    file.write(chunk)
-            print(f"File downloaded successfully: {filepath}")
+    soup = BeautifulSoup(response.content, 'html.parser')
+    set_index = 1
+    for li in soup.find_all('li'):
+        set_song_names = []
+        set_song_ids = []
+        for a_tag in li.find_all('a'):
+            name = a_tag.text
+            set_song_names.append(name)
+            c.execute("SELECT 1 FROM Tune WHERE name = ?", (name,))
+            result = c.fetchone()
+            if not result:
+                abc_path = os.path.join(output_dir, name.replace(' ', '').replace('\'', '').lower() + ".abc")
+                href_str = a_tag.get("href")
+                download_url = ""
+                if '#' in href_str:
+                    download_url = href_str.split("#")[0] + "/abc"
+                else:
+                    download_url = href_str + "/abc"
+                key = ""
+                download_file(download_url, abc_path)
+                with open(abc_path, 'r') as f:
+                    abc_lines = f.readlines()
+                    for line in abc_lines:
+                        if "K:" in line:
+                            key = line.split(" ")[-1]
+                            break
+                c.execute('INSERT INTO Tune (name, abc_path, key, session_url) VALUES (?, ?, ?, ?)', (name, abc_path, key, href_str))
+                c.execute("SELECT tune_id FROM Tune WHERE name = ?", (name,))
+                tune_id = c.fetchone()
+                set_song_ids.append(tune_id[0])
+        set_description = ','.join(set_song_names)
+        c.execute('SELECT set_id FROM SetTable WHERE description = ?', (set_description,))
+        result = c.fetchone()
+        set_id = 0
+        if not result:
+            c.execute('INSERT INTO SetTable (description) VALUES (?)', (set_description,))
+            set_id = c.lastrowid
         else:
-            print(f"Failed to download file. Status code: {response.status_code}")
-    
-    except Exception as e:
-        print(f"An error occurred: {e}")
+            set_id = result[0]
+        for i in range(len(set_song_ids)):
+            c.execute('INSERT INTO TuneToSet (tune_id, set_id, tune_index) VALUES (?, ?, ?)', (set_song_ids[i], set_id, i + 1)) 
+        c.execute('INSERT INTO SetToSession (session_id, set_id, set_index) VALUES (?, ?, ?)', (session_id, set_id, set_index))
+        set_index += 1
+
 
 
 def parse():
@@ -160,7 +166,7 @@ def parse():
     parser.add_argument(
         "--db_file",
         type=pathlib.Path,
-        default=repo_root / "session.db",
+        default=repo_root / "mueller.db",
         help="The file of the database to write to")
     parser.add_argument(
         "--output_dir",
@@ -171,6 +177,11 @@ def parse():
         "--schema_file",
         type=pathlib.Path,
         default=repo_root / "init.sql",
+        help="Filepath for a file containing the SQL commands that initialize the database")
+    parser.add_argument(
+        "--session_db",
+        type=pathlib.Path,
+        default=repo_root / "thesession.db",
         help="Filepath for a file containing the SQL commands that initialize the database")
     # newrel: consider validating these args or possibly making the output_dir
     # if it does not exist
@@ -190,16 +201,29 @@ def main():
             # Execute the SQL commands
             cursor.executescript(schema)
 
-        for session_url, location_id, session_date, start_time, end_time, session_description in ceol_session_info_tuples(args.url):
-            print(f"{session_url=}, {location_id=}, {session_date=}, {start_time=}, {end_time=}, {session_description=}")
-            cursor.execute(
-                "INSERT INTO Session (location_id, session_date, start_time, end_time, description) VALUES (?, date(?), ?, ?, ?)",
-                (
-                    location_id,
-                    session_date.strftime('%Y-%m-%d'),
-                    start_time.strftime('%H:%M:%S'),
-                    end_time.strftime('%H:%M:%S'),
-                    session_description))
+        with sqlite3.connect(args.session_db) as session_conn:
+            session_cursor = session_conn.cursor()
+
+            for session_url, location_id, session_date, start_time, end_time, session_description in ceol_session_info_tuples(args.url):
+                print(f"{session_url=}, {location_id=}, {session_date=}, {start_time=}, {end_time=}, {session_description=}")
+                cursor.execute(
+                    "INSERT INTO Session (location_id, session_date, start_time, end_time, description) VALUES (?, date(?), ?, ?, ?)",
+                    (
+                        location_id,
+                        session_date.strftime('%Y-%m-%d'),
+                        start_time.strftime('%H:%M:%S'),
+                        end_time.strftime('%H:%M:%S'),
+                        session_description))
+                index = 1
+                set_names = []
+                for name, session_url, tune_id, set_index in ceol_tune_info_tuplets(args.url, session_date.strftime('%Y-%m-%d')):
+                    if set_index != index:
+                        index = set_index
+                        set_names = []
+                    session_cursor.execute('SELECT abc FROM tunes WHERE tune_id = ?', (tune_id,))
+                    set_names.append(name)
+                    columns = session_cursor.fetchone()
+                break
 
 
 
