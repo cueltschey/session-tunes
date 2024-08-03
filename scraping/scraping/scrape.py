@@ -42,11 +42,11 @@ def ceol_session_info_tuples(ceol_url):
         session_url = ceol_url + href
         yield session_url, location_id, session_date, start_time, end_time, session_description
 
-def ceol_tune_info_tuplets(ceol_url, session_url):
+def ceol_tune_info_tuplets(session_url):
     """
     Yields tune information for each session at mueller https://ceol.io/sessions/austin/mueller/{session_date}.html
     """
-    response = requests.get(ceol_url + '/' + session_url)
+    response = requests.get(session_url)
     if response.status_code != 200:
         print(f"Failed to retrieve content from {ceol_url}. Status code: {response.status_code}")
         return
@@ -54,11 +54,11 @@ def ceol_tune_info_tuplets(ceol_url, session_url):
     set_index = 1
     for li in soup.find_all('li'):
         for a_tag in li.find_all('a'):
-            name = a_tag.text
-            session_url = a_tag.get("href")
-            tune_id = session_url.split("#")[0].split('/')[-1]
+            tune_name = a_tag.text
+            tune_url = a_tag.get("href")
+            tune_id = tune_url.split("#")[0].split('/')[-1]
             set_index
-            yield name, session_url, tune_id, set_index
+            yield tune_name, tune_id, set_index, tune_url
         set_index += 1
 
 
@@ -214,15 +214,64 @@ def main():
                         start_time.strftime('%H:%M:%S'),
                         end_time.strftime('%H:%M:%S'),
                         session_description))
+                session_id = cursor.lastrowid
                 index = 1
                 set_names = []
-                for name, session_url, tune_id, set_index in ceol_tune_info_tuplets(args.url, session_date.strftime('%Y-%m-%d')):
+                set_tune_ids = []
+                for tune_name, tune_id, set_index, tune_url in ceol_tune_info_tuplets(session_url):
                     if set_index != index:
                         index = set_index
+                        set_description = ','.join(set_names)
+                        cursor.execute('SELECT set_id FROM SetTable WHERE description = ?', (set_description,))
+                        result = cursor.fetchone()
+                        set_id = 0
+                        if not result:
+                            cursor.execute('INSERT INTO SetTable (description) VALUES (?)', (set_description,))
+                            set_id = cursor.lastrowid
+                        else:
+                            set_id = result[0]
+
+                        for i in range(len(set_tune_ids)):
+                            cursor.execute('INSERT INTO TuneToSet (tune_id, set_id, tune_index) VALUES (?, ?, ?)', (set_tune_ids[i], set_id, i + 1))
+                        cursor.execute('INSERT INTO SetToSession (session_id, set_id, set_index) VALUES (?, ?, ?)', (session_id, set_id, index))
                         set_names = []
-                    session_cursor.execute('SELECT abc FROM tunes WHERE tune_id = ?', (tune_id,))
-                    set_names.append(name)
-                    columns = session_cursor.fetchone()
+                        set_tune_ids = []
+
+                    abc = ""
+                    tune_type = ""
+                    tune_meter = ""
+                    mode = ""
+
+                    session_cursor.execute('SELECT abc, type, meter, mode  FROM tunes WHERE tune_id = ?', (tune_id,))
+                    abc_result = session_cursor.fetchone()
+                    if abc_result:
+                        abc, tune_type, tune_meter, mode = abc_result
+
+                    set_names.append(tune_name)
+                    cursor.execute("SELECT tune_id FROM Tune WHERE name = ?", (tune_name,))
+                    result = cursor.fetchone()
+                    if result:
+                        set_tune_ids.append(result[0])
+                        continue
+
+                    cursor.execute('INSERT INTO Tune (name, abc, tune_type, tune_mode, tune_meter, session_url) VALUES (?, ?, ?, ?, ?, ?)', 
+                                   (tune_name, abc, tune_type, mode, tune_meter, tune_url))
+                    set_tune_ids.append(cursor.lastrowid)
+                set_description = ','.join(set_names)
+                cursor.execute('SELECT set_id FROM SetTable WHERE description = ?', (set_description,))
+                result = cursor.fetchone()
+                set_id = 0
+                if not result:
+                    cursor.execute('INSERT INTO SetTable (description) VALUES (?)', (set_description,))
+                    set_id = cursor.lastrowid
+                else:
+                    set_id = result[0]
+
+                for i in range(len(set_tune_ids)):
+                    cursor.execute('INSERT INTO TuneToSet (tune_id, set_id, tune_index) VALUES (?, ?, ?)', (set_tune_ids[i], set_id, i + 1))
+                cursor.execute('INSERT INTO SetToSession (session_id, set_id, set_index) VALUES (?, ?, ?)', (session_id, set_id, index))
+
+
                 break
 
 

@@ -24,7 +24,9 @@ CREATE TABLE Tune (
   tune_id INTEGER PRIMARY KEY,
   name VARCHAR(255),
   abc TEXT,
-  key VARCHAR(255),
+  tune_type VARCHAR(255),
+  tune_meter VARCHAR(255),
+  tune_mode VARCHAR(255),
   session_url VARCHAR(255)
 );
 
