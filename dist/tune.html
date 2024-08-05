@@ -45,23 +45,6 @@
 
 <h2 id="subcategories"><a href="../">Austin, TX</a> • BD Riley's @ Mueller</h2>
 
-<p>This session is held on Thursday evenings at <a href="https://bdrileys.com/">BD Riley's Mueller</a>, from 7-11pm. More on <a href="https://thesession.org/sessions/6247">TheSession.org</a>.</p>
-
-<h3>Top 50 Tunes:</h3>
-<p>These are the most commonly played tunes at this session.</p>
-<table border="0" id="tune-table">
-    <tbody id="tune-table-body">
-        <tr>
-            <td colspan="2">Loading...</td>
-        </tr>
-    </tbody>
-</table>
-<br />
-
-<h3>Session Logs:</h3>
-
-<div id="sessions-body"></div>
-
     <script>
         async function fetchTopTunes() {
             try {
@@ -126,7 +109,7 @@
                 }
                 block.innerHTML += `
                     <li>
-                      <a href="session.html?session_id=${session.session_id}&session_date=${session.session_date}">${session.session_date}</a>
+                      <a href="tune.html?session_id=${session.session_id}">${session.session_date}</a>
                     </li>
                 `;
             });

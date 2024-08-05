@@ -45,6 +45,64 @@ app.get('/sessions', (req, res) => {
     });
 });
 
+app.get('/session', (req, res) => {
+    const session_id = req.query.session_id
+    if(!session_id){
+      res.status(401).send("session_id required")
+      return
+    }
+    const query = `
+          SELECT s.*
+          FROM SetTable s
+          JOIN SetToSession st ON s.set_id = st.set_id
+          WHERE st.session_id = ? AND s.set_id != 1;
+          ORDER BY st.set_index ASC
+      `;
+    db.all(query, [session_id], (err, rows) => {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+        res.json(rows);
+    });
+});
+
+app.get('/sets', (req, res) => {
+    const set_id = req.query.set_id
+    if(!set_id){
+      res.status(401).send("set_id required")
+      return
+    }
+    const query = `SELECT * FROM SetTable WHERE set_id = ?`;
+    db.all(query, [set_id], (err, rows) => {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+        res.json(rows);
+    });
+});
+
+app.get('/set', (req, res) => {
+    const set_id = req.query.set_id
+    if(!set_id){
+      res.status(401).send("set_id required")
+      return
+    }
+    const query = `
+          SELECT DISTINCT t.*
+          FROM Tune t
+          JOIN TuneToSet ts ON t.tune_id = ts.tune_id
+          WHERE ts.set_id = ?
+          ORDER BY ts.tune_index ASC;    
+    `;
+    db.all(query, [set_id], (err, rows) => {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+        res.json(rows);
+    });
+});
+
+
 // Start the server
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);

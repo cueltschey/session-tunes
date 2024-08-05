@@ -1,0 +1,6 @@
+tempo
+intrument
+audiofont file
+volume
+play a note when clicked
+show note being played
