@@ -82,7 +82,7 @@
             tunes.forEach(tune => {
                 const row = document.createElement('li');
                 row.innerHTML = `
-                      <a href="tune.html?set_id=${tune.tune_id}">${tune.name}</a><br />
+                      <a href="tune.html?tune_id=${tune.tune_id}">${tune.name}</a><br />
                       <a href="${tune.session_url}">${tune.session_url}</a>
                 `;
                 tableBody.appendChild(row);

@@ -18,7 +18,7 @@
     
     <!-- Theme CSS -->  
     <link id="theme-style" rel="stylesheet" href="./theme.css">
-
+    <link rel="stylesheet" href="https://www.abcjs.net/abcjs-audio.css" type="text/css">
 </head> 
 
 <header class="header fixed-top">	    
@@ -45,89 +45,82 @@
 
 <h2 id="subcategories"><a href="../">Austin, TX</a> • BD Riley's @ Mueller</h2>
 
+<h3>Tunes:</h3>
+
+<ul id="tunes-body"></ul>
+<button id="audio-button"></button>
+<div id="notation"></div>
+<div id="audio"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/abcjs/6.0.0/abcjs-basic.min.js"></script>
     <script>
-        async function fetchTopTunes() {
+
+        var synthControl;
+
+
+        async function fetchSets(tune_id) {
+          let abcNotation = ''
             try {
-                const response = await fetch('/top-tunes');
+              const response = await fetch(`/tune?tune_id=${tune_id}`);
                 if (!response.ok) {
                     throw new Error('Network response was not ok ' + response.statusText);
                 }
                 const data = await response.json();
-                populateTopTunes(data);
+                abcNotation = populateSets(data);
             } catch (error) {
                 console.error('Error fetching the top tunes:', error);
-                document.getElementById('tune-table-body').innerHTML = `<tr><td colspan="2">Error fetching data. Please try again later.</td></tr>`;
+                document.getElementById('tunes-body').innerHTML = `<tr><td colspan="2">Error fetching data. Please try again later.</td></tr>`;
             }
+          return abcNotation;
         }
-
-        function populateTopTunes(tunes) {
-            const tableBody = document.getElementById('tune-table-body');
+        function populateSets(sets){
+            const tableBody = document.getElementById('tunes-body');
             tableBody.innerHTML = ''; // Clear existing rows
 
-            tunes.forEach(tune => {
-                const row = document.createElement('tr');
+            let count = 1
+            let abcNotation = ''
+            sets.forEach(set => {
+                const row = document.createElement('li');
                 row.innerHTML = `
-                    <td>
-                      <a href="${tune.session_url}">${tune.name}</a>
-                        <span class="count"> (${tune.tune_count})</span>
-                    </td>
+                      <a href="set.html?set_id=${set.set_id}">${set.description}</a>
                 `;
                 tableBody.appendChild(row);
+                abcNotation += `
+                X: ${count}
+                T: ${tune.name}
+                M: ${tune.tune_meter}
+                K: ${tune.tune_mode}
+                ${tune.abc}
+                `
+                count++
             });
-        }
-
-
-        async function fetchSessions() {
-            try {
-                const response = await fetch('/sessions');
-                if (!response.ok) {
-                    throw new Error('Network response was not ok ' + response.statusText);
-                }
-                const data = await response.json();
-                populateSessions(data);
-            } catch (error) {
-                console.error('Error fetching the top tunes:', error);
-                document.getElementById('tune-table-body').innerHTML = `<tr><td colspan="2">Error fetching data. Please try again later.</td></tr>`;
-            }
-        }
-
-        function populateSessions(sessions) {
-            const sessionBody = document.getElementById('sessions-body');
-            sessionBody.innerHTML = ''; // Clear existing rows
-            let block = document.createElement('ul');
-            let currentYear = sessions[0].session_date.split('-')[0]
-          console.log(currentYear)
-
-            sessions.forEach(session => {
-                if(session.session_date.split('-')[0] != currentYear){
-                  let title = document.createElement('p');
-                  title.innerHTML = `<strong>${currentYear}</strong>`
-                  sessionBody.appendChild(title)
-                  sessionBody.appendChild(block)
-                  block = document.createElement('ul')
-                  currentYear = session.session_date.split('-')[0]
-                }
-                block.innerHTML += `
-                    <li>
-                      <a href="tune.html?session_id=${session.session_id}">${session.session_date}</a>
-                    </li>
-                `;
-            });
-            let title = document.createElement('p');
-            title.innerHTML = `<strong>${currentYear}</strong>`
-            sessionBody.appendChild(title)
-            sessionBody.appendChild(block)
-            block = document.createElement('ul')
+          return abcNotation;
         }
 
 
         async function initPageData() {
-          await fetchTopTunes();
-          await fetchSessions();
+          const params = new URLSearchParams(window.location.search); // Get query parameters
+          await fetchSets(params.get('tune_id'));
+        }
+
+        function renderAudio(abcNotation) {
+            console.log(abcNotation)
+          if (ABCJS.synth.supportsAudio()) {
+              var visualObj = ABCJS.renderAbc('notation', abcNotation)[0];
+              synthControl = new ABCJS.synth.SynthController();
+              synthControl.load("#audio", null, {displayRestart: true, displayPlay: true, displayProgress: true});
+              synthControl.setTune(visualObj, false);
+            } else {
+              document.querySelector("#audio").innerHTML = "<div class='audio-error'>Audio is not supported in this browser.</div>";
+          }
         }
 
         // Fetch top tunes when the page loads
-        document.addEventListener('DOMContentLoaded', initPageData);
+        document.addEventListener('DOMContentLoaded', initPageData, { responsive: 'resize' });
+
+
+
+
     </script>
 
 <!-- end landing page -->

@@ -15,7 +15,7 @@ const db = new sqlite3.Database('mueller.db', (err) => {
     }
 });
 
-// Define the endpoint to get top 50 tunes
+// GET the top 50 tunes
 app.get('/top-tunes', (req, res) => {
     const query = `
         SELECT t.tune_id, t.name, t.session_url, COUNT(tts.tune_id) AS tune_count
@@ -34,7 +34,7 @@ app.get('/top-tunes', (req, res) => {
     });
 });
 
-
+// GET all sessions
 app.get('/sessions', (req, res) => {
     const query = `SELECT * FROM Session`;
     db.all(query, [], (err, rows) => {
@@ -45,6 +45,7 @@ app.get('/sessions', (req, res) => {
     });
 });
 
+// GET all sets for a given session
 app.get('/session', (req, res) => {
     const session_id = req.query.session_id
     if(!session_id){
@@ -66,6 +67,7 @@ app.get('/session', (req, res) => {
     });
 });
 
+// GET all sets
 app.get('/sets', (req, res) => {
     const set_id = req.query.set_id
     if(!set_id){
@@ -81,6 +83,7 @@ app.get('/sets', (req, res) => {
     });
 });
 
+// GET all tunes in a given set
 app.get('/set', (req, res) => {
     const set_id = req.query.set_id
     if(!set_id){
@@ -101,6 +104,29 @@ app.get('/set', (req, res) => {
         res.json(rows);
     });
 });
+
+// GET all sets of a given tune
+app.get('/tune', (req, res) => {
+    const tune_id = req.query.tune_id
+    if(!tune_id){
+      res.status(401).send("tune_id required")
+      return
+    }
+    const query = `
+          SELECT DISTINCT s.*
+          FROM SetTable s
+          JOIN TuneToSet ts ON s.set_id = ts.set_id
+          WHERE ts.tune_id = ?
+          ORDER BY ts.tune_index ASC;    
+    `;
+    db.all(query, [tune_id], (err, rows) => {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+        res.json(rows);
+    });
+});
+
 
 
 // Start the server
