@@ -22,12 +22,13 @@ CREATE TABLE SetTable (
 
 CREATE TABLE Tune (
   tune_id INTEGER PRIMARY KEY,
+  the_session_tune_id INTEGER,
   name VARCHAR(255),
   abc TEXT,
   tune_type VARCHAR(255),
   tune_meter VARCHAR(255),
   tune_mode VARCHAR(255),
-  session_url VARCHAR(255)
+  tune_url VARCHAR(255)
 );
 
 CREATE TABLE SetToSession (

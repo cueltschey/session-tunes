@@ -27,12 +27,12 @@ re_session_url = re.compile(r'\d')
 def ceol_session_info_tuples(ceol_url):
     """
     Yields information for each session url from https://ceol.io/sessions/austin/mueller/
+    (session_url, location_id, session_date, start_time, end_time)
     """
     # Define start and end times, these are hard coded for this set of sessions.
     location_id = 1
     start_time = time(19, 0)  # 7:00 PM
     end_time = time(22, 30)   # 10:30 PM
-    session_description = "B.D.Riley Thursday Session at Mueller in Austin, Texas."
 
     response = requests.get(ceol_url)
     if response.status_code != 200:
@@ -46,114 +46,236 @@ def ceol_session_info_tuples(ceol_url):
         except ValueError:
             continue
         session_url = ceol_url + href
-        yield session_url, location_id, session_date, start_time, end_time, session_description
+        yield session_url, location_id, session_date, start_time, end_time
 
 
-def ceol_tune_info_tuplets(session_url):
+def ceol_set_info_tuplets(session_url):
     """
     Yields tune information for each session at mueller https://ceol.io/sessions/austin/mueller/{session_date}.html
+    (set_index, tunes) where tunes is a list of (tune_name, tune_id, tune_url)
     """
     response = requests.get(session_url)
     if response.status_code != 200:
-        print(f"Failed to retrieve content from {ceol_url}. Status code: {response.status_code}")
+        print(f"Failed to retrieve content from {session_url}. Status code: {response.status_code}")
         return
     soup = BeautifulSoup(response.content, 'html.parser')
-    set_index = 1
+    # Note that we will yield 1 based indexes because that matches what SQL does
+    set_index = 0
     for li in soup.find_all('li'):
+        set_index += 1
+        tunes = list()
         for a_tag in li.find_all('a'):
             tune_name = a_tag.text
             tune_url = a_tag.get("href")
             tune_id = tune_url.split("#")[0].split('/')[-1]
-            set_index
-            yield tune_name, tune_id, set_index, tune_url
-        set_index += 1
+            tunes.append((tune_name, tune_id, tune_url))
+        yield set_index, tunes
 
 
-def get_sessions(get_url, output_dir, cursor):
-    """
-    parses https://ceol.io/sessions/austin/mueller/
-    """
-    response = requests.get(get_url)
-    if response.status_code != 200:
-        print(f"Failed to retrieve content from {url}. Status code: {response.status_code}")
-        return
-    soup = BeautifulSoup(response.content, 'html.parser')
-    for a_tag in soup.find_all('a')[2:]:
-        # Skipping these two anchors with the slice, [2:]
-        # <h2 id="subcategories"><a href="../">Austin, TX</a> • BD Riley's @ Mueller</h2>
-        # <p>This session is held on Thursday evenings at <a href="https://bdrileys.com/">BD Riley's Mueller</a>, from 7-11pm. More on <a href="https://thesession.org/sessions/6247">TheSession.org</a>.</p>
-        url = a_tag.get('href')
-        if "thesession" in url or "bd" in url:
-            # Skipping this type of anchor
-            # <a href="https://thesession.org/tunes/9#setting9">Banish Misfortune</a><font color="#DDDDDD">  (98)</font><br>
-            continue
-        # hard coding sesssion information for start and end time
-        time_7pm = "19:00:00"  # 7:00 PM in HH:MM:SS format
-        time_1030pm = "22:30:00"  # 10:30 PM in HH:MM:SS format
-        # extract the data of the session from the url
-        #<li><a href="2024-07-18.html">2024-07-18</a></li>
-        session_date = url.split(".")[0]
-        # create the timestamps by merging date and time
-        timestamp_7pm = f"{session_date} {time_7pm}"
-        timestamp_1030pm = f"{session_date} {time_1030pm}"
-        #
-        cursor.execute("INSERT INTO Session (location_id, session_date, start_time, end_time, description) VALUES (1, date(?), ?, ?, '')",
-                  (session_date, timestamp_7pm, timestamp_1030pm))
-        cursor.execute('SELECT session_id FROM Session WHERE session_date = date(?)', (session_date,))
-        session_id = cursor.lastrowid
-        print(get_url + url)
-        get_tunes(get_url + url, output_dir, session_id, cursor)
+class SessionDataManager():
+    def __init__(self, db_file, schema_file, session_db, initialize_db=True):
+        self.conn = sqlite3.connect(db_file)
+        self.cursor = self.conn.cursor()
 
+        self.schema_file = schema_file
+        if initialize_db:
+            with open(schema_file, 'r') as f:
+                schema = f.read()
+                # _execute the SQL commands
+                self.cursor.executescript(schema)
+                self.conn.commit()
+            # manually create the B.D.Riley's session as id 1.
+            self.create_location(
+                "B.D.Riley Thursday Session at Mueller in Austin, Texas.",
+                "1905 Aldrich St #130, Austin, TX 78723",
+                "https://bdrileys.com/")
 
-def get_tunes(url,output_dir,session_id,c):
-    response = requests.get(url)
-    if response.status_code != 200:
-        print(f"Failed to retrieve content from {url}. Status code: {response.status_code}")
-        return
+        self.session_conn = sqlite3.connect(session_db)
+        self.session_cursor = self.session_conn.cursor()
 
-    soup = BeautifulSoup(response.content, 'html.parser')
-    set_index = 1
-    for li in soup.find_all('li'):
-        set_song_names = []
-        set_song_ids = []
-        for a_tag in li.find_all('a'):
-            name = a_tag.text
-            set_song_names.append(name)
-            c.execute("SELECT 1 FROM Tune WHERE name = ?", (name,))
-            result = c.fetchone()
-            if not result:
-                abc_path = os.path.join(output_dir, name.replace(' ', '').replace('\'', '').lower() + ".abc")
-                href_str = a_tag.get("href")
-                download_url = ""
-                if '#' in href_str:
-                    download_url = href_str.split("#")[0] + "/abc"
-                else:
-                    download_url = href_str + "/abc"
-                key = ""
-                download_file(download_url, abc_path)
-                with open(abc_path, 'r') as f:
-                    abc_lines = f.readlines()
-                    for line in abc_lines:
-                        if "K:" in line:
-                            key = line.split(" ")[-1]
-                            break
-                c.execute('INSERT INTO Tune (name, abc_path, key, session_url) VALUES (?, ?, ?, ?)', (name, abc_path, key, href_str))
-                c.execute("SELECT tune_id FROM Tune WHERE name = ?", (name,))
-                tune_id = c.fetchone()
-                set_song_ids.append(tune_id[0])
-        set_description = ','.join(set_song_names)
-        c.execute('SELECT set_id FROM SetTable WHERE description = ?', (set_description,))
-        result = c.fetchone()
-        set_id = 0
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.conn.commit()
+        self.cursor.close()
+        self.conn.close()
+        #self.session_conn.commit() # maybe we should not do this, so that it is not possible to modify the data in TheSession-data repo.
+        self.session_cursor.close()
+        self.session_conn.close()
+
+    def _execute(self, sql, params=None):
+        try:
+            if params:
+                return self.cursor.execute(sql, params)
+            else:
+                return self.cursor.execute(sql)
+        except sqlite3.Error as e:
+            print(f"An SQL error occurred: {e}")
+            raise
+
+    # Session Table CRUD
+    def create_session(self, location_id, session_date, start_time, end_time, description):
+        sql = """INSERT INTO Session (location_id, session_date, start_time, end_time, description)
+                 VALUES (?, ?, ?, ?, ?)"""
+        self._execute(sql, (location_id, session_date, start_time, end_time, description))
+        self.conn.commit()
+        return self.cursor.lastrowid
+
+    def read_session(self, session_id):
+        sql = "SELECT * FROM Session WHERE session_id = ?"
+        return self._execute(sql, (session_id,)).fetchone()
+
+    def update_session(self, session_id, location_id, session_date, start_time, end_time, description):
+        sql = """UPDATE Session SET location_id = ?, session_date = ?, start_time = ?,
+                 end_time = ?, description = ? WHERE session_id = ?"""
+        self._execute(sql, (location_id, session_date, start_time, end_time, description, session_id))
+        self.conn.commit()
+
+    def delete_session(self, session_id):
+        sql = "DELETE FROM Session WHERE session_id = ?"
+        self._execute(sql, (session_id,))
+        self.conn.commit()
+
+    # Location Table CRUD
+    def create_location(self, description, address, url):
+        sql = "INSERT INTO Location (description, address, url) VALUES (?, ?, ?)"
+        self._execute(sql, (description, address, url))
+        self.conn.commit()
+        return self.cursor.lastrowid
+
+    def read_location(self, location_id):
+        sql = "SELECT * FROM Location WHERE location_id = ?"
+        return self._execute(sql, (location_id,)).fetchone()
+
+    def update_location(self, location_id, description, address, url):
+        sql = "UPDATE Location SET description = ?, address = ?, url = ? WHERE location_id = ?"
+        self._execute(sql, (description, address, url, location_id))
+        self.conn.commit()
+
+    def delete_location(self, location_id):
+        sql = "DELETE FROM Location WHERE location_id = ?"
+        self._execute(sql, (location_id,))
+        self.conn.commit()
+
+    # SetTable CRUD
+    def create_set(self, description):
+        sql = "INSERT INTO SetTable (description) VALUES (?)"
+        self._execute(sql, (description,))
+        self.conn.commit()
+        return self.cursor.lastrowid
+
+    def read_set(self, set_id):
+        sql = "SELECT * FROM SetTable WHERE set_id = ?"
+        return self._execute(sql, (set_id,)).fetchone()
+
+    def update_set(self, set_id, description):
+        sql = "UPDATE SetTable SET description = ? WHERE set_id = ?"
+        self._execute(sql, (description, set_id))
+        self.conn.commit()
+
+    def delete_set(self, set_id):
+        sql = "DELETE FROM SetTable WHERE set_id = ?"
+        self._execute(sql, (set_id,))
+        self.conn.commit()
+
+    def read_or_create_set(self, description):
+        read_sql = "SELECT set_id FROM SetTable WHERE description = ?"
+        self._execute(read_sql, (description,))
+        result = self.cursor.fetchone()
         if not result:
-            c.execute('INSERT INTO SetTable (description) VALUES (?)', (set_description,))
-            set_id = c.lastrowid
+            create_sql = "INSERT INTO SetTable (description) VALUES (?)"
+            self._execute(create_sql, (description,))
+            set_id = self.cursor.lastrowid
         else:
             set_id = result[0]
-        for i in range(len(set_song_ids)):
-            c.execute('INSERT INTO TuneToSet (tune_id, set_id, tune_index) VALUES (?, ?, ?)', (set_song_ids[i], set_id, i + 1)) 
-        c.execute('INSERT INTO SetToSession (session_id, set_id, set_index) VALUES (?, ?, ?)', (session_id, set_id, set_index))
-        set_index += 1
+        return set_id
+
+    # Tune Table CRUD
+    def create_tune(self, the_session_tune_id, name, abc, tune_type, tune_meter, tune_mode, tune_url):
+        sql = """INSERT INTO Tune (the_session_tune_id, name, abc, tune_type, tune_meter, tune_mode, tune_url)
+                 VALUES (?, ?, ?, ?, ?, ?, ?)"""
+        self._execute(sql, (the_session_tune_id, name, abc, tune_type, tune_meter, tune_mode, tune_url))
+        self.conn.commit()
+        return self.cursor.lastrowid
+
+    def get_id_or_create_tune(self, the_session_tune_id, name, abc, tune_type, tune_meter, tune_mode, tune_url):
+        get_id_sql = "SELECT tune_id FROM Tune WHERE the_session_tune_id = ?"
+        self._execute(get_id_sql, (the_session_tune_id,))
+        result = self.cursor.fetchone()
+        if not result:
+            return self.create_tune(the_session_tune_id, name, abc, tune_type, tune_meter, tune_mode, tune_url)
+        return result[0]
+
+    def read_tune(self, tune_id):
+        sql = "SELECT * FROM Tune WHERE tune_id = ?"
+        return self._execute(sql, (tune_id,)).fetchone()
+
+    def update_tune(self, tune_id, the_session_tune_id, name, abc, tune_type, tune_meter, tune_mode, tune_url):
+        sql = """UPDATE Tune SET , the_session_tune_id = ?, name = ?, abc = ?, tune_type = ?, tune_meter = ?,
+                 tune_mode = ?, tune_url = ? WHERE tune_id = ?"""
+        self._execute(sql, (the_session_tune_id, name, abc, tune_type, tune_meter, tune_mode, tune_url, tune_id))
+        self.conn.commit()
+
+    def delete_tune(self, tune_id):
+        sql = "DELETE FROM Tune WHERE tune_id = ?"
+        self._execute(sql, (tune_id,))
+        self.conn.commit()
+
+    # SetToSession Table CRUD
+    def create_set_to_session(self, session_id, set_id, set_index):
+        sql = "INSERT INTO SetToSession (session_id, set_id, set_index) VALUES (?, ?, ?)"
+        self._execute(sql, (session_id, set_id, set_index))
+        self.conn.commit()
+        return self.cursor.lastrowid
+
+    def read_set_to_session(self, session_id, set_id):
+        sql = "SELECT * FROM SetToSession WHERE session_id = ? AND set_id = ?"
+        return self._execute(sql, (session_id, set_id)).fetchone()
+
+    def update_set_to_session(self, session_id, set_id, new_set_index):
+        sql = "UPDATE SetToSession SET set_index = ? WHERE session_id = ? AND set_id = ?"
+        self._execute(sql, (new_set_index, session_id, set_id))
+        self.conn.commit()
+
+    def delete_set_to_session(self, session_id, set_id):
+        sql = "DELETE FROM SetToSession WHERE session_id = ? AND set_id = ?"
+        self._execute(sql, (session_id, set_id))
+        self.conn.commit()
+
+    # TuneToSet Table CRUD
+    def create_tune_to_set(self, tune_id, set_id, tune_index):
+        sql = "INSERT INTO TuneToSet (tune_id, set_id, tune_index) VALUES (?, ?, ?)"
+        self._execute(sql, (tune_id, set_id, tune_index))
+        self.conn.commit()
+        return self.cursor.lastrowid
+
+    def read_tune_to_set(self, tune_id, set_id):
+        sql = "SELECT * FROM TuneToSet WHERE tune_id = ? AND set_id = ?"
+        return self._execute(sql, (tune_id, set_id)).fetchone()
+
+    def update_tune_to_set(self, tune_id, set_id, new_tune_index):
+        sql = "UPDATE TuneToSet SET tune_index = ? WHERE tune_id = ? AND set_id = ?"
+        self._execute(sql, (new_tune_index, tune_id, set_id))
+        self.conn.commit()
+
+    def delete_tune_to_set(self, tune_id, set_id):
+        sql = "DELETE FROM TuneToSet WHERE tune_id = ? AND set_id = ?"
+        self._execute(sql, (tune_id, set_id))
+        self.conn.commit()
+
+    def get_tune_from_TheSession(self, tune_id):
+        abc = ""
+        tune_type = ""
+        tune_meter = ""
+        tune_mode = ""
+
+        self.session_cursor.execute('SELECT abc, type, meter, mode FROM tunes WHERE tune_id = ?', (tune_id,))
+        abc_result = self.session_cursor.fetchone()
+        if abc_result:
+            abc, tune_type, tune_meter, tune_mode = abc_result
+        return abc, tune_type, tune_meter, tune_mode
+
 
 
 def parse():
@@ -183,8 +305,6 @@ def parse():
         type=pathlib.Path,
         default=code_root / "TheSession-data" / "thesession.db",
         help="Filepath for a file containing the SQL commands that initialize the database")
-    # newrel: consider validating these args or possibly making the output_dir
-    # if it does not exist
     return parser.parse_args()
 
 
@@ -192,86 +312,29 @@ def main():
     args = parse()
     print(args)
 
-    with sqlite3.connect(args.db_file) as conn:
-        cursor = conn.cursor()
+    with SessionDataManager(args.db_file, args.schema_file, args.session_db) as sdm:
+        for session_url, location_id, session_date, start_time, end_time in ceol_session_info_tuples(args.url):
+            print(f"Create session: {session_url=}, {location_id=}, {session_date=}, {start_time=}, {end_time=}")
+            session_id = sdm.create_session(
+                location_id,
+                session_date.strftime('%Y-%m-%d'),
+                start_time.strftime('%H:%M:%S'),
+                end_time.strftime('%H:%M:%S'),
+                "")
 
-        # Read the schema file
-        with open(args.schema_file, 'r') as f:
-            schema = f.read()
-            # Execute the SQL commands
-            cursor.executescript(schema)
+            #(set_index, tunes) where tunes is a list of (tune_name, the_session_tune_id, tune_url)
+            for set_index, tunes in ceol_set_info_tuplets(session_url):
+                set_description = ', '.join([tune_name for tune_name, the_session_tune_id, tune_url in tunes])
+                set_id = sdm.read_or_create_set(set_description)
+                sdm.create_set_to_session(session_id, set_id, set_index)
 
-        with sqlite3.connect(args.session_db) as session_conn:
-            session_cursor = session_conn.cursor()
+                tune_number_in_set = 0
+                for tune_name, the_session_tune_id, tune_url in tunes:
+                    tune_number_in_set += 1
+                    abc, tune_type, tune_meter, tune_mode = sdm.get_tune_from_TheSession(the_session_tune_id)
+                    our_tune_id = sdm.get_id_or_create_tune(the_session_tune_id, tune_name, abc, tune_type, tune_meter, tune_mode, tune_url)
+                    sdm.create_tune_to_set(our_tune_id, set_id, tune_number_in_set)
 
-            for session_url, location_id, session_date, start_time, end_time, session_description in ceol_session_info_tuples(args.url):
-                print(f"{session_url=}, {location_id=}, {session_date=}, {start_time=}, {end_time=}, {session_description=}")
-                cursor.execute(
-                    "INSERT INTO Session (location_id, session_date, start_time, end_time, description) VALUES (?, date(?), ?, ?, ?)",
-                    (
-                        location_id,
-                        session_date.strftime('%Y-%m-%d'),
-                        start_time.strftime('%H:%M:%S'),
-                        end_time.strftime('%H:%M:%S'),
-                        session_description))
-                session_id = cursor.lastrowid
-                index = 0
-                set_names = []
-                set_tune_ids = []
-                for tune_name, tune_id, set_index, tune_url in ceol_tune_info_tuplets(session_url):
-                    if set_index != index:
-                        index = set_index
-                        set_description = ','.join(set_names)
-                        cursor.execute('SELECT set_id FROM SetTable WHERE description = ?', (set_description,))
-                        result = cursor.fetchone()
-                        set_id = 0
-                        if not result:
-                            cursor.execute('INSERT INTO SetTable (description) VALUES (?)', (set_description,))
-                            set_id = cursor.lastrowid
-                        else:
-                            set_id = result[0]
-
-                        for i in range(len(set_tune_ids)):
-                            cursor.execute('INSERT INTO TuneToSet (tune_id, set_id, tune_index) VALUES (?, ?, ?)', (set_tune_ids[i], set_id, i + 1))
-                        cursor.execute('INSERT INTO SetToSession (session_id, set_id, set_index) VALUES (?, ?, ?)', (session_id, set_id, index))
-                        set_names = []
-                        set_tune_ids = []
-
-                    abc = ""
-                    tune_type = ""
-                    tune_meter = ""
-                    mode = ""
-
-                    session_cursor.execute('SELECT abc, type, meter, mode  FROM tunes WHERE tune_id = ?', (tune_id,))
-                    abc_result = session_cursor.fetchone()
-                    if abc_result:
-                        abc, tune_type, tune_meter, mode = abc_result
-
-                    set_names.append(tune_name)
-                    cursor.execute("SELECT tune_id FROM Tune WHERE name = ?", (tune_name,))
-                    result = cursor.fetchone()
-                    if result:
-                        set_tune_ids.append(result[0])
-                        continue
-
-                    cursor.execute('INSERT INTO Tune (name, abc, tune_type, tune_mode, tune_meter, session_url) VALUES (?, ?, ?, ?, ?, ?)', 
-                                   (tune_name, abc, tune_type, mode, tune_meter, tune_url))
-                    set_tune_ids.append(cursor.lastrowid)
-                set_description = ','.join(set_names)
-                cursor.execute('SELECT set_id FROM SetTable WHERE description = ?', (set_description,))
-                result = cursor.fetchone()
-                set_id = 0
-                if not result:
-                    cursor.execute('INSERT INTO SetTable (description) VALUES (?)', (set_description,))
-                    set_id = cursor.lastrowid
-                else:
-                    set_id = result[0]
-
-                for i in range(len(set_tune_ids)):
-                    cursor.execute('INSERT INTO TuneToSet (tune_id, set_id, tune_index) VALUES (?, ?, ?)', (set_tune_ids[i], set_id, i + 1))
-                cursor.execute('INSERT INTO SetToSession (session_id, set_id, set_index) VALUES (?, ?, ?)', (session_id, set_id, index))
-
-                break
 
 if __name__ == "__main__":
     rc = main()
