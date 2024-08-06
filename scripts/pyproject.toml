@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "scraping"
+name = "scripts"
 version = "0.1.0"
 description = ""
 authors = ["Charles Ueltschey <chaseuelt@gmail.com>"]
@@ -7,9 +7,8 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.12"
-argparse = "^1.4.0"
-beautifulsoup4 = "^4.12.3"
 requests = "^2.32.3"
+bs4 = "^0.0.2"
 
 
 [build-system]
