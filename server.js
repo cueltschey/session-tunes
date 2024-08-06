@@ -127,6 +127,24 @@ app.get('/tune', (req, res) => {
     });
 });
 
+app.get('/abc', (req, res) => {
+    const tune_id = req.query.tune_id
+    if(!tune_id){
+      res.status(401).send("tune_id required")
+      return
+    }
+    const query = `
+          SELECT * From Tune
+          WHERE tune_id = ?
+    `;
+    db.all(query, [tune_id], (err, rows) => {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+        res.json(rows);
+    });
+});
+
 
 
 // Start the server
