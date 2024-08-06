@@ -18,7 +18,7 @@ const db = new sqlite3.Database('mueller.db', (err) => {
 // GET the top 50 tunes
 app.get('/top-tunes', (req, res) => {
     const query = `
-        SELECT t.tune_id, t.name, t.session_url, COUNT(tts.tune_id) AS tune_count
+        SELECT t.tune_id, t.name, t.tune_url, COUNT(tts.tune_id) AS tune_count
         FROM Tune t
         JOIN TuneToSet tts ON t.tune_id = tts.tune_id
         GROUP BY t.tune_id, t.name
