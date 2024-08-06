@@ -245,7 +245,7 @@
                 `M: ${data[0].tune_meter}\n` +
                 `K: ${data[0].tune_mode}\n` +
                 `I: woodblock\n` +
-                data[0].abc
+                `${data[0].abc}\n`
                 
             } catch (error) {
                 console.error('Error fetching the top tunes:', error);
