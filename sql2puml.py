@@ -9,54 +9,11 @@ Dependencies
 import argparse
 import pathlib
 import sys
-import requests
 import sqlglot
+import requests
+import zlib
+import base64
 
-temp_tables = """table(Session) {
-    primary_key(session_id):  INTEGER
-    foreign_key(location_id): INTEGER
-    session_date:  DATE
-    start_time:    TIMESTAMP
-    end_time:      TIMESTAMP
-    description:   TEXT
-}
-
-table(SetToSession) {
-    foreign_key(session_id): INTEGER
-    foreign_key(set_id):     INTEGER
-    set_index:    INTEGER
-}
-
-table(Location) {
-    primary_key(location_id): INTEGER
-    description:   TEXT
-    address:       VARCHAR_255
-    url:           VARCHAR_255
-}
-
-table(SetTable) {
-    primary_key(set_id):    INTEGER
-    description: TEXT
-}
-
-table(TuneToSet) {
-    foreign_key(tune_id): INTEGER
-    foreign_key(set_id):  INTEGER
-    tune_index:INTEGER
-}
-
-table(Tune) {
-    primary_key(tune_id): INTEGER
-    name:      VARCHAR_255
-    abc_path:  VARCHAR_255
-    key:       VARCHAR_255
-}"""
-
-temp_connections = """Session::location_id --o Location::location_id
-Session::session_id o- SetToSession::session_id
-SetToSession::set_id -o SetTable::set_id
-SetTable::set_id o- TuneToSet::set_id
-TuneToSet::tune_id --o Tune::tune_id"""
 
 # newrel: the !define syntax is deprecated, but when I tried to remove these would work.
 puml_template = """@startuml
@@ -78,7 +35,6 @@ skinparam defaultFontName Courier
 
 @enduml
 """
-
 
 
 class SqlTable:
@@ -113,7 +69,6 @@ class SqlTable:
             reference_column = self._extract_indentifier_from_expressions(schema)
             self.foreign_keys[local_column] = f"{reference_table}::{reference_column}"
             #print(f"{local_column=}, {reference_table=}, {reference_column=}")
-
 
     def _extract_indentifier_from_expressions(self, node):
         for expression in node.args['expressions']:
@@ -155,6 +110,10 @@ class SqlTable:
             name=self.name,
             fields="\n".join(fields))
 
+def encode_puml(text):
+    compressed = zlib.compress(text.encode('utf-8'))
+    encoded = base64.b64encode(compressed)
+    return encoded.decode('utf-8').replace('+', '-').replace('/', '_')
 
 
 def parse():
@@ -205,7 +164,17 @@ def main():
                 tables="\n".join([sql_table.to_puml() for sql_table in sql_tables]),
                 connections="\n".join(connections)))
 
-    # create the svg
+    # Create the svg
+    with args.puml_file.open('r', encoding='utf-8') as f:
+        puml = f.read()
+    url = f'http://www.plantuml.com/plantuml/svg/{encode_puml(puml)}'
+    response = requests.get(url)
+    if response.status_code == 200:
+        with args.svg_file.open('wb') as f:
+            f.write(response.content)
+        print(f"Database schema definition at {args.sql_file} has been translated to Plant UML format in {args.puml_file} and saved as SVG in {args.svg_file}.")
+    else:
+        print(f"Failed to retrieve SVG file. Status code: {response.status_code}")
 
 
 if __name__ == "__main__":
