@@ -13,7 +13,7 @@ import sqlglot
 import requests
 import zlib
 import base64
-
+import string
 
 # newrel: the !define syntax is deprecated, but when I tried to remove these would work.
 puml_template = """@startuml
@@ -110,10 +110,16 @@ class SqlTable:
             name=self.name,
             fields="\n".join(fields))
 
-def encode_puml(text):
-    compressed = zlib.compress(text.encode('utf-8'))
-    encoded = base64.b64encode(compressed)
-    return encoded.decode('utf-8').replace('+', '-').replace('/', '_')
+# lifted from https://github.com/dougn/python-plantuml/blob/master/plantuml.py
+plantuml_alphabet = string.digits + string.ascii_uppercase + string.ascii_lowercase + '-_'
+base64_alphabet   = string.ascii_uppercase + string.ascii_lowercase + string.digits + '+/'
+b64_to_plantuml = bytes.maketrans(base64_alphabet.encode('utf-8'), plantuml_alphabet.encode('utf-8'))
+def deflate_and_encode(plantuml_text):
+    """zlib compress the plantuml text and encode it for the plantuml server.
+    """
+    zlibbed_str = zlib.compress(plantuml_text.encode('utf-8'))
+    compressed_string = zlibbed_str[2:-4]
+    return base64.b64encode(compressed_string).translate(b64_to_plantuml).decode('utf-8')
 
 
 def parse():
@@ -167,7 +173,9 @@ def main():
     # Create the svg
     with args.puml_file.open('r', encoding='utf-8') as f:
         puml = f.read()
-    url = f'http://www.plantuml.com/plantuml/svg/{encode_puml(puml)}'
+    #url = f"http://www.plantuml.com/plantuml/png/{encode_puml(puml)}"
+    url = f'http://www.plantuml.com/plantuml/svg/{deflate_and_encode(puml)}'
+    print(url)
     response = requests.get(url)
     if response.status_code == 200:
         with args.svg_file.open('wb') as f:
