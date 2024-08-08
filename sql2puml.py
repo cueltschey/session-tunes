@@ -58,11 +58,14 @@ SetToSession::set_id -o SetTable::set_id
 SetTable::set_id o- TuneToSet::set_id
 TuneToSet::tune_id --o Tune::tune_id"""
 
+# newrel: the !define syntax is deprecated, but when I tried to remove these would work.
 puml_template = """@startuml
 !define table(x) class x << (T,#FFAAAA) >>
 !define primary_key(x) <color:red>◆</color> x
 !define foreign_key(x) <color:blue>◇</color> x
+!function VARCHAR($x) !return "VARCHAR_" + $x
 
+left to right direction
 hide methods
 hide stereotypes
 skinparam classFontColor red
@@ -135,11 +138,29 @@ class SqlTable:
             if isinstance(statement, sqlglot.expressions.Create):
                 yield cls(statement)
 
+    template = "table({name}) {{\n{fields}\n}}"
+    def to_puml(self):
+        fields = list()
+        if self.primary_key:
+            fields.append(f"    primary_key({self.primary_key}): {self.fields[self.primary_key]}")
+        for fk in self.foreign_keys:
+            fields.append(f"    foreign_key({fk}): {self.fields[fk]}")
+        for field in self.fields:
+            if field == self.primary_key:
+                continue
+            if field in self.foreign_keys:
+                continue
+            fields.append(f"    {field}: {self.fields[field]}")
+        return self.template.format(
+            name=self.name,
+            fields="\n".join(fields))
+
+
 
 def parse():
     current_script_path = pathlib.Path(__file__).resolve()
     current_script_dir = current_script_path.parent
-    print(f"{current_script_path=}, {current_script_dir=}")
+    #print(f"{current_script_path=}, {current_script_dir=}")
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--sql_file",
@@ -166,16 +187,23 @@ def main():
     sql_tables = list()
     for sql_table in SqlTable.parse_sql_file(args.sql_file):
         sql_tables.append(sql_table)
+    connections = list()
+    left_reference = set()
     for sql_table in sql_tables:
-        print(sql_table)
-    return
+        for fk, reference in sql_table.foreign_keys.items():
+            if reference in left_reference:
+                connections.append(f"{reference} o-- {sql_table.name}::{fk}")
+            else:
+                connections.append(f"{sql_table.name}::{fk} --o {reference}")
+        if sql_table.primary_key:
+            left_reference.add(f"{sql_table.name}::{sql_table.primary_key}")
 
     # Write the puml
     with args.puml_file.open('w', encoding='utf-8') as f:
         f.write(
             puml_template.format(
-                tables=temp_tables,
-                connections=temp_connections))
+                tables="\n".join([sql_table.to_puml() for sql_table in sql_tables]),
+                connections="\n".join(connections)))
 
     # create the svg
 

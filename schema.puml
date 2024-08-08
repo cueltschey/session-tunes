@@ -2,57 +2,58 @@
 !define table(x) class x << (T,#FFAAAA) >>
 !define primary_key(x) <color:red>◆</color> x
 !define foreign_key(x) <color:blue>◇</color> x
+!function VARCHAR($x) !return "VARCHAR_" + $x
 
+left to right direction
 hide methods
 hide stereotypes
 skinparam classFontColor red
 skinparam classAttributeIconSize 0
 skinparam defaultFontName Courier
 
-table(Session) {
-    primary_key(session_id):  INTEGER
-    foreign_key(location_id): INTEGER
-    session_date:  DATE
-    start_time:    TIMESTAMP
-    end_time:      TIMESTAMP
-    description:   TEXT
-}
-
-table(SetToSession) {
-    foreign_key(session_id): INTEGER
-    foreign_key(set_id):     INTEGER
-    set_index:    INTEGER
-}
-
 table(Location) {
-    primary_key(location_id): INTEGER
-    description:   TEXT
-    address:       VARCHAR_255
-    url:           VARCHAR_255
+    primary_key(location_id): INT
+    description: TEXT
+    address: VARCHAR(255)
+    url: VARCHAR(255)
 }
-
-table(SetTable) {
-    primary_key(set_id):    INTEGER
+table(Session) {
+    primary_key(session_id): INT
+    foreign_key(location_id): INT
+    session_date: DATE
+    start_time: TIME
+    end_time: TIME
     description: TEXT
 }
-
+table(SetToSession) {
+    foreign_key(session_id): INT
+    foreign_key(set_id): INT
+    set_index: INT
+}
+table(SetTable) {
+    primary_key(set_id): INT
+    description: TEXT
+}
 table(TuneToSet) {
-    foreign_key(tune_id): INTEGER
-    foreign_key(set_id):  INTEGER
-    tune_index:INTEGER
+    foreign_key(tune_id): INT
+    foreign_key(set_id): INT
+    tune_index: INT
 }
-
 table(Tune) {
-    primary_key(tune_id): INTEGER
-    name:      VARCHAR_255
-    abc_path:  VARCHAR_255
-    key:       VARCHAR_255
+    primary_key(tune_id): INT
+    the_session_tune_id: INT
+    name: VARCHAR(255)
+    abc: TEXT
+    tune_type: VARCHAR(255)
+    tune_meter: VARCHAR(255)
+    tune_mode: VARCHAR(255)
+    tune_url: VARCHAR(255)
 }
 
-Session::location_id --o Location::location_id
-Session::session_id o- SetToSession::session_id
-SetToSession::set_id -o SetTable::set_id
-SetTable::set_id o- TuneToSet::set_id
+Location::location_id o-- Session::location_id
+Session::session_id o-- SetToSession::session_id
+SetToSession::set_id --o SetTable::set_id
 TuneToSet::tune_id --o Tune::tune_id
+SetTable::set_id o-- TuneToSet::set_id
 
 @enduml
