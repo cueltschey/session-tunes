@@ -1,0 +1,27 @@
+body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.frame-container {
+    display: flex;
+    gap: 10px; /* Space between frames */
+    width: 100%;
+}
+
+.resizable-frame {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid #ccc; /* Border around frame */
+}
+
+.resizable-frame iframe {
+    width: 100%;
+    height: 100%;
+    border: none; /* Remove default border of iframe */
+}
+
+.date-selector {
+    margin: 10px;
+}
