@@ -21,9 +21,10 @@
 	</style>
 </head> 
 
+<body>
 <button id="audio-button"></button>
 <label for="volumeControl">Volume:</label>
-<input type="range" id="volumeControl" min="0" max="1" step="0.01" value="0.5">
+<input type="range" id="volumeControl" min="0" max="2" step="0.01" value="0.75">
 <select id="soundfonts">
     <option value="https://gleitz.github.io/midi-js-soundfonts/MusyngKite/">Musyng Kite Soundfont</option>
     <option value="https://gleitz.github.io/midi-js-soundfonts/FluidR3_GM/">Fluid Soundfont</option>
@@ -167,7 +168,6 @@
 
 <ul id="tunes-body"></ul>
 
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/abcjs/6.0.0/abcjs-basic.min.js"></script>
     <script>
 
@@ -218,7 +218,7 @@
           const params = new URLSearchParams(window.location.search); // Get query parameters
           const abcNotation = await fetchTunes(params.get('set_id'));
           const audio_button = document.getElementById('audio-button');
-          audio_button.textContent = "Show ABC Notation"
+          audio_button.textContent = "Generate Player"
           audio_button.onclick = function() {
             renderAudio(abcNotation)
           }
@@ -246,12 +246,6 @@
         // Fetch top tunes when the page loads
         document.addEventListener('DOMContentLoaded', initPageData, { responsive: 'resize' });
     </script>
-
-<!-- end landing page -->
-</div>
-
-</div>
-</div>
 
 </body>
 </html>

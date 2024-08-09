@@ -14,33 +14,34 @@
 </head> 
 
 <body>
-    <div class="docs-logo-wrapper">
-        <div class="site-logo"><a class="navbar-brand" href="../../../"><img width="150" src="./images/logo1.png" alt="logo"><span class="logo-text" style="font-weight: 50;">Traditional Irish Session Logs</span></a></div>
+    <div class="docs-logo-wrapper" style="height: 5vh">
+        <div class="site-logo"><a class="navbar-brand" href="../../../"><img width="120" src="./images/logo1.png" alt="logo"><span class="logo-text" style="font-weight: 50;">Traditional Irish Session Logs</span></a></div>
         <label for="start-date">Start Date:</label>
         <input type="date" id="start-date" name="start-date" required>
         <label for="end-date">End Date:</label>
         <input type="date" id="end-date" name="end-date" required>
     </div><!--//docs-logo-wrapper-->
+
+
     <div class="frame-container">
-        <div class="resizable-frame" style="width: 15%; height: 100vh;">
-            <iframe src="set-list.html" title="Set List"></iframe>
+        <div class="resizable-frame" style="width: 15%; height: 92vh; overflow: auto">
+          <ul id="sets-list"></ul>
         </div>
-        <div class="resizable-frame" style="width: 15%; height: 100vh;">
-            <iframe src="tune-list.html" title="Tune List"></iframe>
+        <div class="resizable-frame" style="width: 15%; height: 92vh; overflow: auto">
+          <ul id="tunes-list"></ul>
         </div>
         <div class="main" style="width: 100%;">
             <div class="resizable-frame" style="width: 100%; height: 50%;">
-                <iframe id="set-frame" src="set.html" title="Set"></iframe>
+                <iframe id="set-frame" src="set.html?set_id=1" title="Set"></iframe>
             </div>
             <div class="resizable-frame" style="width: 100%; height: 50%;">
-                <iframe id="tune-frame" src="tune.html" title="Tune"></iframe>
+                <iframe id="tune-frame" src="tune.html?tune_id=1" title="Tune"></iframe>
             </div>
         </div>
     </div>
 
     <script>
-        // Set default dates on page load
-        window.onload = function() {
+        window.onload = async function() {
             const today = new Date();
             const fiveYearsAgo = new Date();
             fiveYearsAgo.setFullYear(today.getFullYear() - 5);
@@ -54,18 +55,69 @@
             // Set default values
             startDateInput.value = formatDate(fiveYearsAgo);
             endDateInput.value = formatDate(today);
+            await fetchSets(formatDate(fiveYearsAgo), formatDate(today));
+            await fetchTunes(formatDate(fiveYearsAgo), formatDate(today));
         };
-         function updateFrames() {
+
+        async function fetchSets(start_date, end_date) {
+            try {
+                const response = await fetch(`/sets-in-range?start=${start_date}&end=${end_date}`);
+                if (!response.ok) {
+                    throw new Error('Network response was not ok ' + response.statusText);
+                }
+                const sets = await response.json();
+                populateSets(sets);
+            } catch (error) {
+                console.error('Error fetching the top tunes:', error);
+                document.getElementById('tunes-body').innerHTML = `<tr><td colspan="2">Error fetching data. Please try again later.</td></tr>`;
+            }
+        }
+        function populateSets(sets){
+            const setList = document.getElementById('sets-list');
+            setList.innerHTML = ''; // Clear existing rows
+            sets.forEach(set => {
+                const item = document.createElement('li');
+                item.textContent = set.description
+                item.style = "cursor: pointer"
+                item.addEventListener('click', function(){
+                  document.getElementById("set-frame").src = `set.html?set_id=${set.set_id}`
+                })
+                setList.appendChild(item);
+            });
+        }
+
+        async function fetchTunes(start_date, end_date) {
+            try {
+                const response = await fetch(`/tunes-in-range?start=${start_date}&end=${end_date}`);
+                if (!response.ok) {
+                    throw new Error('Network response was not ok ' + response.statusText);
+                }
+                const tunes = await response.json();
+                populateTunes(tunes);
+            } catch (error) {
+                console.error('Error fetching the top tunes:', error);
+                document.getElementById('tunes-body').innerHTML = `<tr><td colspan="2">Error fetching data. Please try again later.</td></tr>`;
+            }
+        }
+        function populateTunes(tunes){
+            const setList = document.getElementById('tunes-list');
+            setList.innerHTML = ''; // Clear existing rows
+            tunes.forEach(tune => {
+                const item = document.createElement('li');
+                item.textContent = tune.name
+                item.style = "cursor: pointer"
+                item.addEventListener('click', function(){
+                  document.getElementById("tune-frame").src = `tune.html?tune_id=${tune.tune_id}`
+                })
+                setList.appendChild(item);
+            });
+        }
+
+         async function updateFrames() {
             const startDate = document.getElementById('start-date').value;
             const endDate = document.getElementById('end-date').value;
-
-            // Construct URLs for the iframes with selected dates
-            const firstSetHref = `set.html?start=${startDate}&end=${endDate}`;
-            const firstTuneHref = `tune.html?start=${startDate}&end=${endDate}`;
-
-            // Update the src of the iframes
-            document.getElementById('set-frame').src = firstSetHref;
-            document.getElementById('tune-frame').src = firstTuneHref;
+            await fetchSets(startDate, endDate)
+            await fetchTunes(startDate, endDate)
         }
 
         // Add event listeners to date inputs
