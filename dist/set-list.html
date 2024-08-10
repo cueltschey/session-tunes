@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en"> 
+<head>
+    <title>ceol.io</title>
+    
+    <!-- Meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- Google Font -->
+    <link href="https://fonts.googleapis.com/css?family=Poppins:300,400,500,600,700&display=swap" rel="stylesheet">
+    
+    <!-- Theme CSS -->  
+    <link id="theme-style" rel="stylesheet" href="./theme.css">
+    <link rel="stylesheet" href="https://www.abcjs.net/abcjs-audio.css" type="text/css">
+</head> 
+
+<h3>Sets:</h3>
+<ul id="sets-list"></ul>
+
+    <script>
+        
+
+        async function initPageData() {
+          const params = new URLSearchParams(window.location.search); // Get query parameters
+          const abcNotation = await fetchTunes(params.get('set_id'));
+          const audio_button = document.getElementById('audio-button');
+          audio_button.textContent = "Show ABC Notation"
+          audio_button.onclick = function() {
+            renderAudio(abcNotation)
+          }
+        }
+
+        function renderAudio(abcNotation) {
+            console.log(abcNotation)
+          if (ABCJS.synth.supportsAudio()) {
+              visualObj = ABCJS.renderAbc('notation', abcNotation)[0];
+              synthControl = new ABCJS.synth.SynthController();
+              synthControl.load("#audio", null, {displayRestart: true, displayPlay: true, displayProgress: true});
+              const volume = parseFloat(document.getElementById('volumeControl').value)
+              const instrument = Number(document.getElementById('instrument-picker').value)
+              const fontURL = document.getElementById('soundfonts').value
+              synthControl.setTune(visualObj, false, {
+              soundFontVolumeMultiplier: volume, 
+              soundFontUrl: fontURL,
+              program: instrument,
+              });
+            } else {
+              document.querySelector("#audio").innerHTML = "<div class='audio-error'>Audio is not supported in this browser.</div>";
+          }
+        }
+
+        // Fetch top tunes when the page loads
+        document.addEventListener('DOMContentLoaded', initPageData, { responsive: 'resize' });
+    </script>
+
+<!-- end landing page -->
+</div>
+
+</div>
+</div>
+
+</body>
+</html>

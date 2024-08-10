@@ -83,6 +83,53 @@ app.get('/sets', (req, res) => {
     });
 });
 
+// GET all sets in a range of dates
+app.get('/sets-in-range', (req, res) => {
+    const start_date = req.query.start
+    const end_date = req.query.end
+    const key_str = req.query.key
+    if(!start_date || !end_date){
+      res.status(401).send("range required")
+      return
+    }
+    const query = `
+          SELECT s.*
+          FROM SetTable s
+          JOIN SetToSession st ON s.set_id = st.set_id
+          JOIN Session ses ON st.session_id = ses.session_id
+          WHERE ses.session_date BETWEEN ? AND ?
+          ORDER BY st.set_index ASC;
+    `;
+    if(key_str && key_str != 'all'){
+    const query = `
+            SELECT s.*
+            FROM SetTable s
+            JOIN SetToSession st ON s.set_id = st.set_id
+            JOIN Session ses ON st.session_id = ses.session_id
+            JOIN TuneToSet tts ON tts.set_id = s.set_id
+            JOIN Tune t ON t.tune_id = tts.tune_id
+            WHERE ses.session_date BETWEEN ? AND ? AND t.tune_mode = ?
+            ORDER BY st.set_index ASC;
+      `;
+      db.all(query, [start_date, end_date, key_str], (err, rows) => {
+            if (err) {
+                return res.status(500).json({ error: err.message });
+            }
+            res.json(rows);
+        });
+      return
+    }
+
+    db.all(query, [start_date, end_date], (err, rows) => {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+        res.json(rows);
+    });
+});
+
+
+
 // GET all tunes in a given set
 app.get('/set', (req, res) => {
     const set_id = req.query.set_id
@@ -126,6 +173,57 @@ app.get('/tune', (req, res) => {
         res.json(rows);
     });
 });
+
+
+// GET all sets in a range of dates
+app.get('/tunes-in-range', (req, res) => {
+    const start_date = req.query.start
+    const end_date = req.query.end
+    const key_str = req.query.key
+    if(!start_date || !end_date){
+      res.status(401).send("range required")
+      return
+    }
+    const query = `
+          SELECT DISTINCT t.name, t.tune_id, t.name, t.tune_url
+          FROM Tune t
+          JOIN TuneToSet tts ON t.tune_id = tts.tune_id
+          JOIN SetTable s ON s.set_id = tts.set_id
+          JOIN SetToSession st ON s.set_id = st.set_id
+          JOIN Session ses ON st.session_id = ses.session_id
+          WHERE ses.session_date BETWEEN ? AND ?
+          ORDER BY st.set_index ASC;
+    `;
+
+    if(key_str && key_str != 'all'){
+    const query = `
+          SELECT DISTINCT t.name, t.tune_id, t.name, t.tune_url
+          FROM Tune t
+          JOIN TuneToSet tts ON t.tune_id = tts.tune_id
+          JOIN SetTable s ON s.set_id = tts.set_id
+          JOIN SetToSession st ON s.set_id = st.set_id
+          JOIN Session ses ON st.session_id = ses.session_id
+          WHERE ses.session_date BETWEEN ? AND ? AND t.tune_mode = ?
+          ORDER BY st.set_index ASC;
+    `;
+    db.all(query, [start_date, end_date, key_str], (err, rows) => {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+        res.json(rows);
+    });
+    return
+
+    }
+
+    db.all(query, [start_date, end_date], (err, rows) => {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+        res.json(rows);
+    });
+});
+
 
 app.get('/abc', (req, res) => {
     const tune_id = req.query.tune_id

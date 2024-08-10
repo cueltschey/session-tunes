@@ -8,11 +8,6 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     
-    <meta name="description" content="Index">
-    <link rel="shortcut icon" href="./images/ceol.io.1.ico" >
-    <link rel="favicon" href="./images/ceol.io.1.ico" >
-    <!-- <link rel="shortcut icon" href="favicon.ico"> -->
-    
     <!-- Google Font -->
     <link href="https://fonts.googleapis.com/css?family=Poppins:300,400,500,600,700&display=swap" rel="stylesheet">
     
@@ -26,36 +21,11 @@
 	</style>
 </head> 
 
-<header class="header fixed-top">	    
-    <div class="branding docs-branding">
-        <div class="container-fluid position-relative py-2">
-            <div class="docs-logo-wrapper">
-                <div class="site-logo"><a class="navbar-brand" href="../../../"><img width="150" src="./images/logo1.png" alt="logo"><span class="logo-text" style="font-weight: 50;">Traditional Irish Session Logs</span></a></div>
-            </div><!--//docs-logo-wrapper-->
-            <div class="docs-top-utilities d-flex justify-content-end align-items-center">
-
-                <ul class="list-inline mx-md-3 mb-0 d-none d-lg-flex">
-                    <!-- <li class="list-inline-item"><a href="#"><i class="fab fa-product-hunt fa-fw"></i></a></li> -->
-                </ul><!--//social-list-->
-                
-            </div><!--//docs-top-utilities-->
-        </div><!--//container-->
-    </div><!--//branding-->
-</header><!--//header-->
-
-<body class="docs-page">    
-    <div class="docs-wrapper">
-	    <div class="docs-content">
-        <div class="landing-page" style="display: block;">
-
-<h2 id="subcategories"><a href="../">Austin, TX</a> • BD Riley's @ Mueller</h2>
-
-<h3>Tunes:</h3>
-
-<ul id="tunes-body"></ul>
+<body>
+<div id="set-title"></div>
 <button id="audio-button"></button>
 <label for="volumeControl">Volume:</label>
-<input type="range" id="volumeControl" min="0" max="1" step="0.01" value="0.5">
+<input type="range" id="volumeControl" min="0" max="2" step="0.01" value="0.75">
 <select id="soundfonts">
     <option value="https://gleitz.github.io/midi-js-soundfonts/MusyngKite/">Musyng Kite Soundfont</option>
     <option value="https://gleitz.github.io/midi-js-soundfonts/FluidR3_GM/">Fluid Soundfont</option>
@@ -63,6 +33,7 @@
     <option value="https://gleitz.github.io/midi-js-soundfonts/Tabla/">Tabla Soundfont</option>
 </select>
 <select id="instrument-picker">
+    <option value="21">accordion</option>
     <option value="40">violin</option>
     <option value="0">acoustic_grand_piano</option>
     <option value="1">bright_acoustic_piano</option>
@@ -85,7 +56,6 @@
     <option value="18">rock_organ</option>
     <option value="19">church_organ</option>
     <option value="20">reed_organ</option>
-    <option value="21">accordion</option>
     <option value="22">harmonica</option>
     <option value="23">tango_accordion</option>
     <option value="24">acoustic_guitar_nylon</option>
@@ -195,6 +165,9 @@
 
 <div id="notation"></div>
 <div id="audio"></div>
+<h3>Tunes:</h3>
+
+<ul id="tunes-body"></ul>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/abcjs/6.0.0/abcjs-basic.min.js"></script>
     <script>
@@ -227,8 +200,8 @@
             tunes.forEach(tune => {
                 const row = document.createElement('li');
                 row.innerHTML = `
-                      <a href="tune.html?tune_id=${tune.tune_id}">${tune.name}</a><br />
-                      <a href="${tune.tune_url}">${tune.tune_url}</a>
+                      <a href="tune.html?tune_id=${tune.tune_id}&name=${tune.name}&tune_url=${tune.tune_url}">${tune.name}</a><br />
+                      <a href="${tune.tune_url}" target="_blank">${tune.tune_url}</a>
                 `;
                 tableBody.appendChild(row);
                 abcNotation +=
@@ -246,10 +219,13 @@
           const params = new URLSearchParams(window.location.search); // Get query parameters
           const abcNotation = await fetchTunes(params.get('set_id'));
           const audio_button = document.getElementById('audio-button');
-          audio_button.textContent = "Show ABC Notation"
+          audio_button.textContent = "Generate Player"
           audio_button.onclick = function() {
             renderAudio(abcNotation)
           }
+          set_title = document.createElement('h2')
+          set_title.textContent = params.get('description')
+          document.getElementById('set-title').appendChild(set_title)
         }
 
         function renderAudio(abcNotation) {
@@ -274,12 +250,6 @@
         // Fetch top tunes when the page loads
         document.addEventListener('DOMContentLoaded', initPageData, { responsive: 'resize' });
     </script>
-
-<!-- end landing page -->
-</div>
-
-</div>
-</div>
 
 </body>
 </html>
