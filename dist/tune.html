@@ -22,6 +22,8 @@
 
 <body>
 
+<h3 id="tune-title"></h3>
+
 <button id="audio-button"></button>
 <label for="volumeControl">Volume:</label>
 <input type="range" id="volumeControl" min="0" max="2" step="0.01" value="0.75">
@@ -237,6 +239,10 @@
           audio_button.onclick = function() {
             renderAudio(abcNotation)
           }
+          tune_header = document.createElement('a')
+          tune_header.textContent = params.get('name')
+          tune_header.href = params.get('tune_url')
+          document.getElementById('tune-title').appendChild(tune_header)
         }
 
         function renderAudio(abcNotation) {

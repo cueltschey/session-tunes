@@ -32,10 +32,10 @@
         </div>
         <div class="main" style="width: 100%;">
             <div class="resizable-frame" style="width: 100%; height: 50%;">
-                <iframe id="set-frame" src="set.html?set_id=1" title="Set"></iframe>
+                <iframe id="set-frame" src="" title="Set"></iframe>
             </div>
             <div class="resizable-frame" style="width: 100%; height: 50%;">
-                <iframe id="tune-frame" src="tune.html?tune_id=1" title="Tune"></iframe>
+                <iframe id="tune-frame" src="" title="Tune"></iframe>
             </div>
         </div>
     </div>
@@ -107,7 +107,7 @@
                 item.textContent = tune.name
                 item.style = "cursor: pointer"
                 item.addEventListener('click', function(){
-                  document.getElementById("tune-frame").src = `tune.html?tune_id=${tune.tune_id}`
+                  document.getElementById("tune-frame").src = `tune.html?tune_id=${tune.tune_id}&name=${tune.name}&tune_url=${tune.tune_url}`
                 })
                 setList.appendChild(item);
             });

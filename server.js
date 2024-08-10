@@ -164,7 +164,7 @@ app.get('/tunes-in-range', (req, res) => {
       return
     }
     const query = `
-          SELECT DISTINCT t.name, t.tune_id
+          SELECT DISTINCT t.name, t.tune_id, t.name, t.tune_url
           FROM Tune t
           JOIN TuneToSet tts ON t.tune_id = tts.tune_id
           JOIN SetTable s ON s.set_id = tts.set_id
