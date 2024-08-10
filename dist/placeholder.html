@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link id="theme-style" rel="stylesheet" href="./theme.css">
+    <title>Select Tune</title>
+</head>
+<body>
+
+    <h1 id="message"></h1>
+
+    <script>
+        function getQueryParameter(name) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(name);
+        }
+
+        const tuneType = getQueryParameter('type');
+
+        const messageElement = document.getElementById('message');
+        if (tuneType == "tune") {
+            messageElement.textContent = `Please select a tune.`;
+        } else {
+            messageElement.textContent = 'Please select a set';
+        }
+    </script>
+
+</body>
+</html>
