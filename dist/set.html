@@ -22,6 +22,7 @@
 </head> 
 
 <body>
+<div id="set-title"></div>
 <button id="audio-button"></button>
 <label for="volumeControl">Volume:</label>
 <input type="range" id="volumeControl" min="0" max="2" step="0.01" value="0.75">
@@ -199,8 +200,8 @@
             tunes.forEach(tune => {
                 const row = document.createElement('li');
                 row.innerHTML = `
-                      <a href="tune.html?tune_id=${tune.tune_id}">${tune.name}</a><br />
-                      <a href="${tune.tune_url}">${tune.tune_url}</a>
+                      <a href="tune.html?tune_id=${tune.tune_id}&name=${tune.name}&tune_url=${tune.tune_url}">${tune.name}</a><br />
+                      <a href="${tune.tune_url}" target="_blank">${tune.tune_url}</a>
                 `;
                 tableBody.appendChild(row);
                 abcNotation +=
@@ -222,6 +223,9 @@
           audio_button.onclick = function() {
             renderAudio(abcNotation)
           }
+          set_title = document.createElement('h2')
+          set_title.textContent = params.get('description')
+          document.getElementById('set-title').appendChild(set_title)
         }
 
         function renderAudio(abcNotation) {

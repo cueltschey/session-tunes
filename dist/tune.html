@@ -199,7 +199,7 @@
             sets.forEach(set => {
                 const row = document.createElement('li');
                 row.innerHTML = `
-                      <a href="set.html?set_id=${set.set_id}">${set.description}</a>
+                  <a href="set.html?set_id=${set.set_id}&description=${set.description}">${set.description}</a>
                 `;
                 tableBody.appendChild(row);
             });
@@ -242,6 +242,7 @@
           tune_header = document.createElement('a')
           tune_header.textContent = params.get('name')
           tune_header.href = params.get('tune_url')
+          tune_header.target = "_blank"
           document.getElementById('tune-title').appendChild(tune_header)
         }
 
