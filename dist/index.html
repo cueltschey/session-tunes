@@ -20,6 +20,30 @@
         <input type="date" id="start-date" name="start-date" required>
         <label for="end-date">End Date:</label>
         <input type="date" id="end-date" name="end-date" required>
+        <label for="tuneMode">Key and Mode:</label>
+    <select id="tuneMode">
+      <option value="all">All</option>
+      <option value="Dmajor">D Major</option>
+      <option value="Gmajor">G Major</option>
+      <option value="Eminor">E Minor</option>
+      <option value="Edorian">E Dorian</option>
+      <option value="Adorian">A Dorian</option>
+      <option value="Amixolydian">A Mixolydian</option>
+      <option value="Amajor">A Major</option>
+      <option value="Ddorian">D Dorian</option>
+      <option value="Aminor">A Minor</option>
+      <option value="Dmixolydian">D Mixolydian</option>
+      <option value="Gminor">G Minor</option>
+      <option value="Bminor">B Minor</option>
+      <option value="Emajor">E Major</option>
+      <option value="Dminor">D Minor</option>
+      <option value="Bdorian">B Dorian</option>
+      <option value="Emixolydian">E Mixolydian</option>
+      <option value="Fmajor">F Major</option>
+      <option value="Gdorian">G Dorian</option>
+      <option value="Cmajor">C Major</option>
+      <option value="Gmixolydian">G Mixolydian</option>
+    </select>
     </div><!--//docs-logo-wrapper-->
 
 
@@ -48,6 +72,7 @@
 
             const startDateInput = document.getElementById('start-date');
             const endDateInput = document.getElementById('end-date');
+            const key = document.getElementById('tuneMode').value;
 
             // Format dates to YYYY-MM-DD
             const formatDate = (date) => date.toISOString().split('T')[0];
@@ -55,13 +80,13 @@
             // Set default values
             startDateInput.value = formatDate(fiveYearsAgo);
             endDateInput.value = formatDate(today);
-            await fetchSets(formatDate(fiveYearsAgo), formatDate(today));
-            await fetchTunes(formatDate(fiveYearsAgo), formatDate(today));
+            await fetchSets(formatDate(fiveYearsAgo), formatDate(today), key);
+            await fetchTunes(formatDate(fiveYearsAgo), formatDate(today), key);
         };
 
-        async function fetchSets(start_date, end_date) {
+        async function fetchSets(start_date, end_date, key) {
             try {
-                const response = await fetch(`/sets-in-range?start=${start_date}&end=${end_date}`);
+                const response = await fetch(`/sets-in-range?start=${start_date}&end=${end_date}&key=${key}`);
                 if (!response.ok) {
                     throw new Error('Network response was not ok ' + response.statusText);
                 }
@@ -86,9 +111,9 @@
             });
         }
 
-        async function fetchTunes(start_date, end_date) {
+        async function fetchTunes(start_date, end_date, key) {
             try {
-                const response = await fetch(`/tunes-in-range?start=${start_date}&end=${end_date}`);
+                const response = await fetch(`/tunes-in-range?start=${start_date}&end=${end_date}&key=${key}`);
                 if (!response.ok) {
                     throw new Error('Network response was not ok ' + response.statusText);
                 }
@@ -116,13 +141,15 @@
          async function updateFrames() {
             const startDate = document.getElementById('start-date').value;
             const endDate = document.getElementById('end-date').value;
-            await fetchSets(startDate, endDate)
-            await fetchTunes(startDate, endDate)
+            const key = document.getElementById('tuneMode').value;
+            await fetchSets(startDate, endDate, key)
+            await fetchTunes(startDate, endDate, key)
         }
 
         // Add event listeners to date inputs
         document.getElementById('start-date').addEventListener('change', updateFrames);
         document.getElementById('end-date').addEventListener('change', updateFrames);
+        document.getElementById('tuneMode').addEventListener('change', updateFrames);
     </script>
     </script>
 
