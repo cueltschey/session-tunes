@@ -226,7 +226,7 @@
                 `M: ${tune.tune_meter}\n` +
                 `K: ${tune.tune_mode}\n`
                 abcNotation[tune.name] = tune.abc
-                count++;
+
             });
           return [abcNotation, abcHeaders];
         }
@@ -262,16 +262,9 @@
         function renderAudio(abcNotation, abcHeaders) {
           if (ABCJS.synth.supportsAudio()) {
               combinedAbc = ''
-              count = 1;
               for(abcKey in abcHeaders){
-              combinedAbc += abcHeaders[abcKey] + abcNotation[abcKey] + '\n'
-              console.log(document.getElementById('count_1'))
-              numPlays = parseInt(document.getElementById(`count_${count}`).value);
-              console.log(numPlays)
-              for(i = 0; i < numPlays; i++){
-                combinedAbc += abcNotation[abcKey] + '\n';
-              }
-                  count++
+                  console.log(abcKey)
+                  combinedAbc += abcHeaders[abcKey] + '\n' + abcNotation[abcKey] = '\n'
               }
 
               console.log(combinedAbc)
