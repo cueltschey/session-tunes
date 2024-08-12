@@ -208,8 +208,12 @@
             sets.forEach(set => {
                 const row = document.createElement('li');
                 row.innerHTML = `
-                  <a href="set.html?set_id=${set.set_id}&description=${set.description}">${set.description}</a>
+                  <a>${set.description}</a>
                 `;
+                row.onclick = function() {
+                    window.parent.changeSetFrame(`set.html?set_id=${set.set_id}&description=${set.description}`)
+                }
+                row.style = "cursor: pointer"
                 tableBody.appendChild(row);
             });
         }

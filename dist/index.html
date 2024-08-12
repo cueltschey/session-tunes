@@ -65,6 +65,14 @@
     </div>
 
     <script>
+        function changeTuneFrame(newSrc) {
+            const tune_frame = document.getElementById('tune-frame');
+            tune_frame.src = newSrc;
+        }
+        function changeSetFrame(newSrc) {
+            const set_frame = document.getElementById('set-frame');
+            set_frame.src = newSrc;
+        }
         window.onload = async function() {
             const today = new Date();
             const fiveYearsAgo = new Date();

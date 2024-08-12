@@ -213,9 +213,12 @@
             tunes.forEach(tune => {
                 const row = document.createElement('li');
                 row.innerHTML = `
-                      <a href="tune.html?tune_id=${tune.tune_id}&name=${tune.name}&tune_url=${tune.tune_url}">${tune.name}</a><br />
+                      <a style="cursor: pointer">${tune.name}</a><br />
                       <a href="${tune.tune_url}" target="_blank">${tune.tune_url}</a>
                 `;
+                row.onclick = function() {
+                    window.parent.changeTuneFrame(`tune.html?tune_id=${tune.tune_id}&name=${tune.name}&tune_url=${tune.tune_url}`)
+                }
                 const tuneCountSelector = document.createElement('li');
                 tuneCountSelector.innerHTML = `
                       <label for="count_${count}">${tune.name} # of Plays:</label>
@@ -288,7 +291,8 @@
                   displayRestart: true,
                   displayPlay: true,
                   displayProgress: true,
-                  displayClock: true
+                  displayClock: true,
+                  displayWarp: true
               };
               var synthControl = new ABCJS.synth.SynthController();
               synthControl.load("#audio", cursorControl, controlOptions);
