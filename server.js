@@ -185,14 +185,15 @@ app.get('/tunes-in-range', (req, res) => {
       return
     }
     const query = `
-          SELECT DISTINCT t.name, t.tune_id, t.name, t.tune_url
+          SELECT t.name, t.tune_id, t.name, t.tune_url, COUNT(tts.tune_id) as tune_count
           FROM Tune t
           JOIN TuneToSet tts ON t.tune_id = tts.tune_id
           JOIN SetTable s ON s.set_id = tts.set_id
           JOIN SetToSession st ON s.set_id = st.set_id
           JOIN Session ses ON st.session_id = ses.session_id
           WHERE ses.session_date BETWEEN ? AND ?
-          ORDER BY st.set_index ASC;
+          GROUP BY t.name, t.tune_id, t.tune_url
+          ORDER BY tune_count DESC;
     `;
 
     if(key_str && key_str != 'all'){

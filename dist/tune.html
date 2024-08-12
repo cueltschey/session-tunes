@@ -18,10 +18,10 @@
 			max-width: 770px;
 		}
     .abcjs-highlight {
-    fill: #0a9ecc;
+      fill: #0a9ecc;
     }
     .abcjs-cursor {
-    stroke: red;
+      stroke: red;
     }
 	</style>
 </head> 
@@ -171,10 +171,9 @@
 </select>
 
 
-<div class="container">
-  <div id="paper"></div>
-  <div id="audio"></div>
-</div>
+<div id="paper"></div>
+<div id="audio"></div>
+<br>
 
 <h3>Sets Where this tune was played:</h3>
 
@@ -277,7 +276,7 @@
               const volume = parseFloat(document.getElementById('volumeControl').value)
               const instrument = Number(document.getElementById('instrument-picker').value)
               const fontURL = document.getElementById('soundfonts').value
-              var visualOptions = {  };
+              var visualOptions = { responsive: "resize" };
               var visualObj = ABCJS.renderAbc("paper", abcNotation);
               var controlOptions = {
                   displayRestart: true,
@@ -293,6 +292,7 @@
                   soundFontUrl: fontURL,
                   soundFontVolumeMultiplier: volume,
               })
+              document.getElementById('paper').style = "width: 100%; height: 100%"
               } else {
               document.querySelector("#audio").innerHTML = "<div class='audio-error'>Audio is not supported in this browser.</div>";
           }

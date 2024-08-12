@@ -129,7 +129,7 @@
                 populateTunes(tunes);
             } catch (error) {
                 console.error('Error fetching the top tunes:', error);
-                document.getElementById('tunes-body').innerHTML = `<tr><td colspan="2">Error fetching data. Please try again later.</td></tr>`;
+                document.getElementById('tunes-list').innerHTML = `<tr><td colspan="2">Error fetching data. Please try again later.</td></tr>`;
             }
         }
         function populateTunes(tunes){
@@ -139,6 +139,9 @@
                 const item = document.createElement('li');
                 item.textContent = tune.name
                 item.style = "cursor: pointer"
+                countSpan = document.createElement('span')
+            countSpan.textContent = `\t(${tune.tune_count})`
+                item.appendChild(countSpan)
                 item.addEventListener('click', function(){
                   document.getElementById("tune-frame").src = `tune.html?tune_id=${tune.tune_id}&name=${tune.name}&tune_url=${tune.tune_url}`
                 })
