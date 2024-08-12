@@ -226,7 +226,16 @@
           set_title = document.createElement('h2')
           set_title.textContent = params.get('description')
           document.getElementById('set-title').appendChild(set_title)
+
           document.getElementById('volumeControl').addEventListener('click', function() {
+            renderAudio(abcNotation);
+          })
+
+          document.getElementById('soundfonts').addEventListener('click', function() {
+            renderAudio(abcNotation);
+          })
+
+          document.getElementById('instrument-picker').addEventListener('click', function() {
             renderAudio(abcNotation);
           })
         }

@@ -218,7 +218,6 @@
                 `T: ${data[0].name}\n` +
                 `M: ${data[0].tune_meter}\n` +
                 `K: ${data[0].tune_mode}\n` +
-                `I: woodblock\n` +
                 `${data[0].abc}\n`
                 
             } catch (error) {
@@ -244,6 +243,18 @@
           tune_header.href = params.get('tune_url')
           tune_header.target = "_blank"
           document.getElementById('tune-title').appendChild(tune_header)
+
+          document.getElementById('volumeControl').addEventListener('click', function() {
+            renderAudio(abcNotation);
+          })
+
+          document.getElementById('soundfonts').addEventListener('click', function() {
+            renderAudio(abcNotation);
+          })
+
+          document.getElementById('instrument-picker').addEventListener('click', function() {
+            renderAudio(abcNotation);
+          })
         }
 
         function renderAudio(abcNotation) {
@@ -255,11 +266,14 @@
               const volume = parseFloat(document.getElementById('volumeControl').value)
               const fontURL = document.getElementById('soundfonts').value
               const instrument = Number(document.getElementById('instrument-picker').value)
-              synthControl.setTune(visualObj, false, {
-              soundFontVolumeMultiplier: volume, 
-              soundFontUrl: fontURL,
-              program: instrument,
-            });
+              const audioParams = {
+                soundFontVolumeMultiplier: volume, 
+                soundFontUrl: fontURL,
+                program: instrument,
+                millisecondsPerMeasure: 400,
+              }
+              console.log(audioParams)
+              synthControl.setTune(visualObj, false, audioParams);
             } else {
               document.querySelector("#audio").innerHTML = "<div class='audio-error'>Audio is not supported in this browser.</div>";
           }
