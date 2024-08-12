@@ -18,6 +18,12 @@
 		.abcjs-inline-audio {
 			max-width: 770px;
 		}
+    .abcjs-highlight {
+    fill: #0a9ecc;
+    }
+    .abcjs-cursor {
+    stroke: red;
+    }
 	</style>
 </head> 
 
@@ -165,8 +171,10 @@
 
 <div id="tune-count"></div>
 
-<div id="notation"></div>
-<div id="audio"></div>
+<div class="container">
+  <div id="paper"></div>
+  <div id="audio"></div>
+</div>
 <h3>Tunes:</h3>
 
 <ul id="tunes-body"></ul>
@@ -265,31 +273,121 @@
               count = 1;
               for(abcKey in abcHeaders){
               combinedAbc += abcHeaders[abcKey] + abcNotation[abcKey] + '\n'
-              console.log(document.getElementById('count_1'))
-              numPlays = parseInt(document.getElementById(`count_${count}`).value);
-              console.log(numPlays)
-              for(i = 0; i < numPlays; i++){
-                combinedAbc += abcNotation[abcKey] + '\n';
-              }
+                  numPlays = parseInt(document.getElementById(`count_${count}`).value);
+                  for(i = 0; i < numPlays; i++){
+                    combinedAbc += abcNotation[abcKey] + '\n';
+                  }
                   count++
               }
-
-              console.log(combinedAbc)
-              visualObj = ABCJS.renderAbc('notation', combinedAbc)[0];
-              synthControl = new ABCJS.synth.SynthController();
-              synthControl.load("#audio", null, {displayRestart: true, displayPlay: true, displayProgress: true});
               const volume = parseFloat(document.getElementById('volumeControl').value)
               const instrument = Number(document.getElementById('instrument-picker').value)
               const fontURL = document.getElementById('soundfonts').value
-              synthControl.setTune(visualObj, false, {
-              soundFontVolumeMultiplier: volume, 
-              soundFontUrl: fontURL,
-              program: instrument,
+              var visualOptions = {  };
+              var visualObj = ABCJS.renderAbc("paper", combinedAbc);
+              var controlOptions = {
+                  displayRestart: true,
+                  displayPlay: true,
+                  displayProgress: true,
+                  displayClock: true
+              };
+              var synthControl = new ABCJS.synth.SynthController();
+              synthControl.load("#audio", cursorControl, controlOptions);
+              synthControl.disable(true);
+              var midiBuffer = new ABCJS.synth.CreateSynth();
+              midiBuffer.init({
+                  visualObj: visualObj[0],
+                  millisecondsPerMeasure: 100,
+                  options: {
+                    soundFontUrl: fontURL,
+                    program: instrument,
+                    soundFontVolumeMultiplier: volume,
+                  }
+
+              }).then(function () {
+                  synthControl.setTune(visualObj[0], true).then(function (response) {
+                  document.querySelector(".abcjs-inline-audio").classList.remove("disabled");
+                  })
               });
+
             } else {
               document.querySelector("#audio").innerHTML = "<div class='audio-error'>Audio is not supported in this browser.</div>";
           }
         }
+
+  function CursorControl(rootSelector) {
+    var self = this;
+
+    self.cursor = null;
+    self.rootSelector = rootSelector;
+
+    self.onStart = function() {
+        var svg = document.querySelector(self.rootSelector + " svg");
+        self.cursor = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        self.cursor.setAttribute("class", "abcjs-cursor");
+        self.cursor.setAttributeNS(null, 'x1', 0);
+        self.cursor.setAttributeNS(null, 'y1', 0);
+        self.cursor.setAttributeNS(null, 'x2', 0);
+        self.cursor.setAttributeNS(null, 'y2', 0);
+        svg.appendChild(self.cursor);
+    };
+
+    self.removeSelection = function() {
+        var lastSelection = document.querySelectorAll(self.rootSelector + " .abcjs-highlight");
+        for (var k = 0; k < lastSelection.length; k++)
+            lastSelection[k].classList.remove("abcjs-highlight");
+    };
+
+
+    self.onEvent = function(ev) {
+        if (ev.measureStart && ev.left === null)
+            return; 
+
+        self.removeSelection();
+
+        for (var i = 0; i < ev.elements.length; i++ ) {
+            var note = ev.elements[i];
+            for (var j = 0; j < note.length; j++) {
+                note[j].classList.add("abcjs-highlight");
+            }
+        }
+
+        if (self.cursor) {
+            self.cursor.setAttribute("x1", ev.left - 2);
+            self.cursor.setAttribute("x2", ev.left - 2);
+            self.cursor.setAttribute("y1", ev.top);
+            self.cursor.setAttribute("y2", ev.top + ev.height);
+        }
+    };
+    self.onFinished = function() {
+            self.removeSelection();
+
+        if (self.cursor) {
+            self.cursor.setAttribute("x1", 0);
+            self.cursor.setAttribute("x2", 0);
+            self.cursor.setAttribute("y1", 0);
+            self.cursor.setAttribute("y2", 0);
+        }
+
+    };
+}
+
+var cursorControl = new CursorControl("#paper");
+
+function onEvent(ev) {
+if (ev)
+cursorControl.onEvent(ev);
+else
+cursorControl.onFinished();
+}
+
+function startTimer() {
+    cursorControl.onStart();
+
+var timingCallbacks = new ABCJS.TimingCallbacks(visualObj[0], {
+    eventCallback: onEvent
+});
+timingCallbacks.start();
+}
 
         document.addEventListener('DOMContentLoaded', initPageData, { responsive: 'resize' });
     </script>
