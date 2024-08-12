@@ -268,9 +268,15 @@
 
         function renderAudio(abcNotation) {
           if (ABCJS.synth.supportsAudio()) {
+              console.log(abcNotation)
               const volume = parseFloat(document.getElementById('volumeControl').value)
               const instrument = Number(document.getElementById('instrument-picker').value)
               const fontURL = document.getElementById('soundfonts').value
+              console.log({
+                    program: instrument,
+                    chordsOff: true,
+                  })
+
               var visualOptions = {  };
               var visualObj = ABCJS.renderAbc("paper", abcNotation);
               var controlOptions = {
@@ -281,24 +287,12 @@
               };
               var synthControl = new ABCJS.synth.SynthController();
               synthControl.load("#audio", cursorControl, controlOptions);
-              synthControl.disable(true);
-              var midiBuffer = new ABCJS.synth.CreateSynth();
-              midiBuffer.init({
-                  visualObj: visualObj[0],
-                  millisecondsPerMeasure: 100,
-                  options: {
-                    soundFontUrl: fontURL,
-                    program: instrument,
-                    soundFontVolumeMultiplier: volume,
-                  }
-
-              }).then(function () {
-                  synthControl.setTune(visualObj[0], true).then(function (response) {
-                  document.querySelector(".abcjs-inline-audio").classList.remove("disabled");
-                  })
-              });
-
-            } else {
+              synthControl.setTune(visualObj[0], false, {
+                  program: instrument,
+                  soundFontUrl: fontURL,
+                  soundFontVolumeMultiplier: volume,
+              })
+              } else {
               document.querySelector("#audio").innerHTML = "<div class='audio-error'>Audio is not supported in this browser.</div>";
           }
         }
