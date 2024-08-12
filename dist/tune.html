@@ -264,6 +264,7 @@
           document.getElementById('instrument-picker').addEventListener('click', function() {
             renderAudio(abcNotation);
           })
+
         }
 
         function renderAudio(abcNotation) {
@@ -272,18 +273,14 @@
               const volume = parseFloat(document.getElementById('volumeControl').value)
               const instrument = Number(document.getElementById('instrument-picker').value)
               const fontURL = document.getElementById('soundfonts').value
-              console.log({
-                    program: instrument,
-                    chordsOff: true,
-                  })
-
               var visualOptions = {  };
               var visualObj = ABCJS.renderAbc("paper", abcNotation);
               var controlOptions = {
                   displayRestart: true,
                   displayPlay: true,
                   displayProgress: true,
-                  displayClock: true
+                  displayClock: true,
+                  displayWarp: true
               };
               var synthControl = new ABCJS.synth.SynthController();
               synthControl.load("#audio", cursorControl, controlOptions);
