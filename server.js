@@ -35,6 +35,7 @@ session.run('RETURN 1 AS result')
     });
 
 
+// bugbug: update to use session
 // GET the top 50 tunes
 app.get('/top-tunes', (req, res) => {
     const query = `
@@ -54,6 +55,7 @@ app.get('/top-tunes', (req, res) => {
     });
 });
 
+// bugbug: update to use session
 // GET all sessions
 app.get('/sessions', (req, res) => {
     const query = `SELECT * FROM Session`;
@@ -65,6 +67,7 @@ app.get('/sessions', (req, res) => {
     });
 });
 
+// bugbug: update to use session
 // GET all sets for a given session
 app.get('/session', (req, res) => {
     const session_id = req.query.session_id
@@ -87,6 +90,7 @@ app.get('/session', (req, res) => {
     });
 });
 
+// bugbug: update to use session
 // GET all sets
 app.get('/sets', (req, res) => {
     const set_id = req.query.set_id
@@ -103,6 +107,7 @@ app.get('/sets', (req, res) => {
     });
 });
 
+// bugbug: update to use session
 // GET all sets in a range of dates
 app.get('/sets-in-range', (req, res) => {
     const start_date = req.query.start
@@ -148,8 +153,7 @@ app.get('/sets-in-range', (req, res) => {
     });
 });
 
-
-
+// bugbug: update to use session
 // GET all tunes in a given set
 app.get('/set', (req, res) => {
     const set_id = req.query.set_id
@@ -173,6 +177,7 @@ app.get('/set', (req, res) => {
     });
 });
 
+// bugbug: update to use session
 // GET all sets of a given tune
 app.get('/tune', (req, res) => {
     const tune_id = req.query.tune_id
@@ -196,6 +201,7 @@ app.get('/tune', (req, res) => {
 });
 
 
+// bugbug: update to use session
 // GET all sets in a range of dates
 app.get('/tunes-in-range', (req, res) => {
     const start_date = req.query.start
@@ -246,6 +252,7 @@ app.get('/tunes-in-range', (req, res) => {
     });
 });
 
+// bugbug: update to use session
 // GET all sessions in a range of dates
 app.get('/sessions-in-range', (req, res) => {
     const start_date = req.query.start
@@ -269,6 +276,7 @@ app.get('/sessions-in-range', (req, res) => {
 });
 
 
+// bugbug: update to use session
 app.get('/abc', (req, res) => {
     const tune_id = req.query.tune_id
     if(!tune_id){
@@ -288,63 +296,76 @@ app.get('/abc', (req, res) => {
 });
 
 app.get('/graph/tune', async (req, res) => {
-    const session = driver.session(); // Create a new session for each request
-    try {
-        const tuneName = req.query.tuneName;
-        const result = await session.run(
-              `MATCH (s:SetTable)-[:CONTAINS]->(t:Tune {name: $tuneName})
-              WITH t, COLLECT(s) AS sets
-              WITH t, sets[0..30] AS limitedSets
-              MATCH (s)-[:CONTAINS]->(otherTune:Tune)
-              WHERE s IN limitedSets
-              RETURN t, limitedSets, COLLECT(otherTune) AS otherTunes`,
-            { tuneName }
-        );
+  try {
+    const tuneName = req.query.tuneName;
+    const result = await driver.executeQuery(
+      `
+      MATCH (s:SetTable)-[:CONTAINS]->(t:Tune {name: $tuneName})
+      WITH t, COLLECT(s) AS sets
+      WITH t, sets[0..30] AS limitedSets
+      MATCH (s)-[:CONTAINS]->(otherTune:Tune)
+      WHERE s IN limitedSets
+      RETURN t, limitedSets, COLLECT(otherTune) AS otherTunes
+      `,
+      { tuneName },
+      { database: 'neo4j' }  // Specify the database if needed
+    );
 
-        const nodes = [];
-        const edges = [];
+    const nodes = [];
+    const edges = [];
 
-        result.records.forEach(record => {
-            console.log(record.get('otherTunes'))
-            const tuneNode = record.get('t').properties;
-            nodes.push({ id: tuneNode.tune_id, label: tuneNode.name , color: {background: 'yellow', border: "black"}});
+    result.records.forEach(record => {
+      console.log(record.get('otherTunes'));
+      const tuneNode = record.get('t').properties;
+      nodes.push({
+        id: tuneNode.tune_id,
+        label: tuneNode.name,
+        color: {background: 'yellow', border: "black"}
+      });
 
-            const sets = record.get('limitedSets');
-            sets.forEach(set => {
-                const setNode = set.properties;
-                if (!nodes.find(n => n.id === setNode.set_id)) {
-                    nodes.push({ id: setNode.set_id, label: setNode.description, color: {background: '#aaddaa', border: "black"} });
-                }
-            });
+      const sets = record.get('limitedSets');
+      sets.forEach(set => {
+        const setNode = set.properties;
+        if (!nodes.find(n => n.id === setNode.set_id)) {
+          nodes.push({
+            id: setNode.set_id,
+            label: setNode.description,
+            color: {background: '#aaddaa', border: "black"}
+          });
+        }
+      });
 
-            const otherTunes = record.get('otherTunes').filter(tune => tune.properties.tune_id != tuneNode.tune_id);
-            otherTunes.forEach(otherTune => {
-                const otherTuneNode = otherTune.properties;
-                if (!nodes.find(n => n.id === otherTuneNode.tune_id)) {
-                    nodes.push({ id: otherTuneNode.tune_id, label: otherTuneNode.name, color: { background: '#aaaadd', border: "black" } });
-                }
-                nodes.filter(n => n.label.includes(otherTuneNode.name) && n.label != otherTuneNode.name).forEach(set => {
-                  console.log(otherTuneNode.name)
-                  if(!edges.find(e => e.to === set.id && e.from === otherTuneNode.tune_id)){
-                    edges.push({ from: otherTuneNode.tune_id, to: set.id });
-                  }
-                });
-            });
-
-            sets.forEach(set => {
-                const setNode = set.properties;
-                edges.push({ from: tuneNode.tune_id, to: setNode.set_id});
-            });
+      const otherTunes = record.get('otherTunes').filter(tune => tune.properties.tune_id != tuneNode.tune_id);
+      otherTunes.forEach(otherTune => {
+        const otherTuneNode = otherTune.properties;
+        if (!nodes.find(n => n.id === otherTuneNode.tune_id)) {
+          nodes.push({
+            id: otherTuneNode.tune_id,
+            label: otherTuneNode.name,
+            color: { background: '#aaaadd', border: "black" }
+          });
+        }
+        nodes.filter(n => n.label.includes(otherTuneNode.name) && n.label != otherTuneNode.name).forEach(set => {
+          console.log(otherTuneNode.name);
+          if(!edges.find(e => e.to === set.id && e.from === otherTuneNode.tune_id)){
+            edges.push({ from: otherTuneNode.tune_id, to: set.id });
+          }
         });
+      });
 
-        res.json({ nodes, edges });
-    } catch (error) {
-        console.error('Error fetching data:', error);
-        res.status(500).send('Error fetching data');
-    } finally {
-        await session.close(); // Ensure the session is closed in the finally block
-    }
+      sets.forEach(set => {
+        const setNode = set.properties;
+        edges.push({ from: tuneNode.tune_id, to: setNode.set_id});
+      });
+    });
+
+    res.json({ nodes, edges });
+  } catch (error) {
+    console.error('Error fetching data:', error);
+    res.status(500).send('Error fetching data');
+  }
 });
+
 
 // Start the server
 app.listen(PORT, () => {
