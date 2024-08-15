@@ -39,9 +39,17 @@
             const data = { nodes, edges };
             const options = {};
             const network = new vis.Network(container, data, options);
+            network.on('doubleClick', function (params) {
+              // Check if a node was double-clicked
+              if (params.nodes.length > 0) {
+                  const nodeId = params.nodes[0];
+                  window.location.href = '/graph.html?tuneName=' + graphData.nodes.find(n => n.id == nodeId).label;
+              }
+            });
         }
 
-        drawGraph();
+
+                drawGraph();
     </script>
 </body>
 </html>
