@@ -1,4 +1,4 @@
-from sdm import SessionDataManager
+import SessionDataManager
 import pathlib
 import argparse
 from audio import AudioManager
@@ -43,7 +43,7 @@ def main():
     args = parse()
     print(args)
 
-    with SessionDataManager(args.db_file, args.schema_file, args.session_db, initialize_db=False) as sdm:
+    with SessionDataManager.SessionDataManager(args.db_file, args.schema_file, args.session_db, initialize_db=False) as sdm:
         audio_manager = AudioManager()
         _, _, name, abc, tune_type, tune_meter, tune_mode, _ = sdm.read_tune(113)
         audio_manager.create_audio_converter(1, name, tune_meter, tune_mode, abc)
