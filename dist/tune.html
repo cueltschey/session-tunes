@@ -17,6 +17,12 @@
 		.abcjs-inline-audio {
 			max-width: 770px;
 		}
+    .abcjs-highlight {
+      fill: #0a9ecc;
+    }
+    .abcjs-cursor {
+      stroke: red;
+    }
 	</style>
 </head> 
 
@@ -164,8 +170,10 @@
     <option value="127">gunshot</option>
 </select>
 
-<div id="notation"></div>
+
+<div id="paper"></div>
 <div id="audio"></div>
+<br>
 
 <h3>Sets Where this tune was played:</h3>
 
@@ -199,8 +207,12 @@
             sets.forEach(set => {
                 const row = document.createElement('li');
                 row.innerHTML = `
-                  <a href="set.html?set_id=${set.set_id}&description=${set.description}">${set.description}</a>
+                  <a>${set.description}</a>
                 `;
+                row.onclick = function() {
+                    window.parent.changeSetFrame(`set.html?set_id=${set.set_id}&description=${set.description}`)
+                }
+                row.style = "cursor: pointer"
                 tableBody.appendChild(row);
             });
         }
@@ -218,7 +230,6 @@
                 `T: ${data[0].name}\n` +
                 `M: ${data[0].tune_meter}\n` +
                 `K: ${data[0].tune_mode}\n` +
-                `I: woodblock\n` +
                 `${data[0].abc}\n`
                 
             } catch (error) {
@@ -244,28 +255,123 @@
           tune_header.href = params.get('tune_url')
           tune_header.target = "_blank"
           document.getElementById('tune-title').appendChild(tune_header)
+
+          document.getElementById('volumeControl').addEventListener('click', function() {
+            renderAudio(abcNotation);
+          })
+
+          document.getElementById('soundfonts').addEventListener('click', function() {
+            renderAudio(abcNotation);
+          })
+
+          document.getElementById('instrument-picker').addEventListener('click', function() {
+            renderAudio(abcNotation);
+          })
+
         }
 
         function renderAudio(abcNotation) {
           if (ABCJS.synth.supportsAudio()) {
               console.log(abcNotation)
-              visualObj = ABCJS.renderAbc('notation', abcNotation)[0];
-              synthControl = new ABCJS.synth.SynthController();
-              synthControl.load("#audio", null, {displayRestart: true, displayPlay: true, displayProgress: true});
               const volume = parseFloat(document.getElementById('volumeControl').value)
-              const fontURL = document.getElementById('soundfonts').value
               const instrument = Number(document.getElementById('instrument-picker').value)
-              synthControl.setTune(visualObj, false, {
-              soundFontVolumeMultiplier: volume, 
-              soundFontUrl: fontURL,
-              program: instrument,
-            });
-            } else {
+              const fontURL = document.getElementById('soundfonts').value
+              var visualOptions = { responsive: "resize" };
+              var visualObj = ABCJS.renderAbc("paper", abcNotation);
+              var controlOptions = {
+                  displayRestart: true,
+                  displayPlay: true,
+                  displayProgress: true,
+                  displayClock: true,
+                  displayWarp: true
+              };
+              var synthControl = new ABCJS.synth.SynthController();
+              synthControl.load("#audio", cursorControl, controlOptions);
+              synthControl.setTune(visualObj[0], false, {
+                  program: instrument,
+                  soundFontUrl: fontURL,
+                  soundFontVolumeMultiplier: volume,
+              })
+              document.getElementById('paper').style = "width: 100%; height: 100%"
+              } else {
               document.querySelector("#audio").innerHTML = "<div class='audio-error'>Audio is not supported in this browser.</div>";
           }
         }
 
-        // Fetch top tunes when the page loads
+  function CursorControl(rootSelector) {
+    var self = this;
+
+    self.cursor = null;
+    self.rootSelector = rootSelector;
+
+    self.onStart = function() {
+        var svg = document.querySelector(self.rootSelector + " svg");
+        self.cursor = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        self.cursor.setAttribute("class", "abcjs-cursor");
+        self.cursor.setAttributeNS(null, 'x1', 0);
+        self.cursor.setAttributeNS(null, 'y1', 0);
+        self.cursor.setAttributeNS(null, 'x2', 0);
+        self.cursor.setAttributeNS(null, 'y2', 0);
+        svg.appendChild(self.cursor);
+    };
+
+    self.removeSelection = function() {
+        var lastSelection = document.querySelectorAll(self.rootSelector + " .abcjs-highlight");
+        for (var k = 0; k < lastSelection.length; k++)
+            lastSelection[k].classList.remove("abcjs-highlight");
+    };
+
+
+    self.onEvent = function(ev) {
+        if (ev.measureStart && ev.left === null)
+            return; 
+
+        self.removeSelection();
+
+        for (var i = 0; i < ev.elements.length; i++ ) {
+            var note = ev.elements[i];
+            for (var j = 0; j < note.length; j++) {
+                note[j].classList.add("abcjs-highlight");
+            }
+        }
+
+        if (self.cursor) {
+            self.cursor.setAttribute("x1", ev.left - 2);
+            self.cursor.setAttribute("x2", ev.left - 2);
+            self.cursor.setAttribute("y1", ev.top);
+            self.cursor.setAttribute("y2", ev.top + ev.height);
+        }
+    };
+    self.onFinished = function() {
+            self.removeSelection();
+
+        if (self.cursor) {
+            self.cursor.setAttribute("x1", 0);
+            self.cursor.setAttribute("x2", 0);
+            self.cursor.setAttribute("y1", 0);
+            self.cursor.setAttribute("y2", 0);
+        }
+
+    };
+}
+
+var cursorControl = new CursorControl("#paper");
+
+function onEvent(ev) {
+if (ev)
+cursorControl.onEvent(ev);
+else
+cursorControl.onFinished();
+}
+
+function startTimer() {
+    cursorControl.onStart();
+
+var timingCallbacks = new ABCJS.TimingCallbacks(visualObj[0], {
+    eventCallback: onEvent
+});
+timingCallbacks.start();
+}
         document.addEventListener('DOMContentLoaded', initPageData, { responsive: 'resize' });
 
 

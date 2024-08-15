@@ -18,12 +18,32 @@
 Install [node.js](https://nodejs.org/en) with all dependencies.<br>
 Change directories into the root of this repo on your local.<br>
 
+To use the relational database, install sqlite on the server.
 ```
 npm i express sqlite3
-npm run start
 ```
 
-## Database Schema
+To use the graph database, install neoj4 on the server.
+```
+npm install neo4j-driver
+```
 
+Start the server.
+```
+npm run start
+```
+Use Ctrl-c to stop the server and restart if you changed any js.
+
+
+## Relational Database
+The schema used for the relational database can be visualized with this diagram.
 ![Database Schema](schema.svg)
 
+After prototyping the website using this schema observable lag was seen even for one user.
+This illustrates a need for some other way of generating the reports.
+
+This relational database is also not suited to filtering the counts by date range.
+
+## Graph Database
+Currently working to create a schema.
+The neo4j database is hosted on neo4j+s://a36f2166.databases.neo4j.io

@@ -20,7 +20,7 @@ import pathlib
 import sys
 import re
 from datetime import datetime, time
-from sdm import SessionDataManager
+import SessionDataManager
 
 
 re_session_url = re.compile(r'\d')
@@ -78,27 +78,22 @@ def parse():
     code_root = repo_root.parent
     #print(f"{current_script_path=}, {repo_root=} {code_root=}")
     parser = argparse.ArgumentParser(
-        description="Extract URLs from <a> tags on a given HTML page.")
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument(
         "--url",
         type=str,
         default="https://ceol.io/sessions/austin/mueller/",
         help="URL of the HTML page to parse")
     parser.add_argument(
-        "--db_file",
-        type=pathlib.Path,
-        default=repo_root / "mueller.db",
-        help="The file of the database to write to")
-    parser.add_argument(
-        "--schema_file",
-        type=pathlib.Path,
-        default=repo_root / "init.sql",
-        help="Filepath for a file containing the SQL commands that initialize the database")
-    parser.add_argument(
         "--session_db",
         type=pathlib.Path,
         default=code_root / "TheSession-data" / "thesession.db",
         help="Filepath for a file containing the SQL commands that initialize the database")
+    parser.add_argument(
+        '--initialize_db',
+        default=False,
+        action=argparse.BooleanOptionalAction)
     return parser.parse_args()
 
 
@@ -106,7 +101,7 @@ def main():
     args = parse()
     print(args)
 
-    with SessionDataManager(args.db_file, args.schema_file, args.session_db) as sdm:
+    with SessionDataManager.SessionDataManager(args.session_db, args.initialize_db) as sdm:
         for session_url, location_id, session_date, start_time, end_time in ceol_session_info_tuples(args.url):
             print(f"Create session: {session_url=}, {location_id=}, {session_date=}, {start_time=}, {end_time=}")
             session_id = sdm.create_session(

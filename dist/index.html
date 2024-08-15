@@ -49,22 +49,27 @@
 
     <div class="frame-container">
         <div class="resizable-frame" style="width: 15%; height: 92vh; overflow: auto">
-          <ul id="sets-list"></ul>
+          <ul id="sessions-list"></ul>
         </div>
         <div class="resizable-frame" style="width: 15%; height: 92vh; overflow: auto">
           <ul id="tunes-list"></ul>
         </div>
         <div class="main" style="width: 100%;">
-            <div class="resizable-frame" style="width: 100%; height: 50%;">
+            <div class="resizable-frame" style="height: 100%">
                 <iframe id="tune-frame" src="placeholder.html?type=tune" title="Tune"></iframe>
-            </div>
-            <div class="resizable-frame" style="width: 100%; height: 50%;">
-                <iframe id="set-frame" src="placeholder.html?type=set" title="Set"></iframe>
             </div>
         </div>
     </div>
 
     <script>
+        function changeTuneFrame(newSrc) {
+            const tune_frame = document.getElementById('tune-frame');
+            tune_frame.src = newSrc;
+        }
+        function changeSetFrame(newSrc) {
+            const set_frame = document.getElementById('set-frame');
+            set_frame.src = newSrc;
+        }
         window.onload = async function() {
             const today = new Date();
             const fiveYearsAgo = new Date();
@@ -80,50 +85,66 @@
             // Set default values
             startDateInput.value = formatDate(fiveYearsAgo);
             endDateInput.value = formatDate(today);
-            await fetchSets(formatDate(fiveYearsAgo), formatDate(today), key);
-            await fetchTunes(formatDate(fiveYearsAgo), formatDate(today), key);
+            await fetchData(`/sessions-in-range?start=${formatDate(fiveYearsAgo)}&end=${formatDate(today)}`, populateSessions)
+            await fetchData(`/top-tunes`,populateTunes)
         };
 
-        async function fetchSets(start_date, end_date, key) {
+        async function fetchData(endpoint, callBack, documentRef) {
             try {
-                const response = await fetch(`/sets-in-range?start=${start_date}&end=${end_date}&key=${key}`);
+                const response = await fetch(endpoint);
                 if (!response.ok) {
                     throw new Error('Network response was not ok ' + response.statusText);
                 }
-                const sets = await response.json();
-                populateSets(sets);
+                const data = await response.json();
+                if(documentRef){
+                  callBack(data, documentRef);
+                } else{
+                  callBack(data);
+                }
             } catch (error) {
                 console.error('Error fetching the top tunes:', error);
                 document.getElementById('tunes-body').innerHTML = `<tr><td colspan="2">Error fetching data. Please try again later.</td></tr>`;
             }
         }
-        function populateSets(sets){
-            const setList = document.getElementById('sets-list');
-            setList.innerHTML = ''; // Clear existing rows
+        function populateSets(sets, setList){
+            setList.innerHTML = '';
             sets.forEach(set => {
                 const item = document.createElement('li');
                 item.textContent = set.description
                 item.style = "cursor: pointer"
                 item.addEventListener('click', function(){
-                  document.getElementById("set-frame").src = `set.html?set_id=${set.set_id}&description=${set.description}`
+                  document.getElementById("tune-frame").src = `set.html?set_id=${set.set_id}&description=${set.description}`
+                  const startDate = document.getElementById('start-date').value;
+                  const endDate = document.getElementById('end-date').value;
+                  const key = document.getElementById('tuneMode').value;
+                  fetchData(`/set?set_id=${set.set_id}`, populateTunes)
                 })
                 setList.appendChild(item);
             });
         }
 
-        async function fetchTunes(start_date, end_date, key) {
-            try {
-                const response = await fetch(`/tunes-in-range?start=${start_date}&end=${end_date}&key=${key}`);
-                if (!response.ok) {
-                    throw new Error('Network response was not ok ' + response.statusText);
-                }
-                const tunes = await response.json();
-                populateTunes(tunes);
-            } catch (error) {
-                console.error('Error fetching the top tunes:', error);
-                document.getElementById('tunes-body').innerHTML = `<tr><td colspan="2">Error fetching data. Please try again later.</td></tr>`;
-            }
+        function populateSessions(sessions){
+            const sessionList = document.getElementById('sessions-list');
+            sessionList.innerHTML = ''; // Clear existing rows
+            sessions.forEach(s => {
+                const sessionTitle = document.createElement('li');
+                sessionTitle.style = "cursor: pointer"
+                sessionTitle.textContent = s.session_date
+                sessionTitle.addEventListener('click', function(){
+                  const setsList = document.createElement('ul')
+                  const startDate = document.getElementById('start-date').value;
+                  const endDate = document.getElementById('end-date').value;
+                  const key = document.getElementById('tuneMode').value;
+
+                  fetchData(`/sets-in-range?start=${startDate}&end=${endDate}&key=${key}`, populateSets, setsList)
+                  sessionTitle.appendChild(setsList)
+                })
+                sessionList.appendChild(sessionTitle);
+            });
         }
+
+
+
         function populateTunes(tunes){
             const setList = document.getElementById('tunes-list');
             setList.innerHTML = ''; // Clear existing rows
@@ -131,6 +152,9 @@
                 const item = document.createElement('li');
                 item.textContent = tune.name
                 item.style = "cursor: pointer"
+                countSpan = document.createElement('span')
+            countSpan.textContent = `\t(${tune.tune_count})`
+                item.appendChild(countSpan)
                 item.addEventListener('click', function(){
                   document.getElementById("tune-frame").src = `tune.html?tune_id=${tune.tune_id}&name=${tune.name}&tune_url=${tune.tune_url}`
                 })
@@ -142,8 +166,8 @@
             const startDate = document.getElementById('start-date').value;
             const endDate = document.getElementById('end-date').value;
             const key = document.getElementById('tuneMode').value;
-            await fetchSets(startDate, endDate, key)
-            await fetchTunes(startDate, endDate, key)
+            await fetchData(`/sets-in-range?start=${startDate}&end=${endDate}&key=${key}`, populateSets)
+            await fetchData(`/tunes-in-range?start=${startDate}&end=${endDate}&key=${key}`,populateTunes)
         }
 
         // Add event listeners to date inputs
