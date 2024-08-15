@@ -48,27 +48,28 @@
 
 
     <div class="frame-container">
-        <div class="resizable-frame" style="width: 15%; height: 92vh; overflow: auto">
-          <ul id="sessions-list"></ul>
-        </div>
-        <div class="resizable-frame" style="width: 15%; height: 92vh; overflow: auto">
-          <ul id="tunes-list"></ul>
-        </div>
-        <div class="main" style="width: 100%;">
+        <div class="main" style="width: 100vw; height: 100vh; display: flex; flex-direction: row">
             <div class="resizable-frame" style="height: 100%">
-                <iframe id="tune-frame" src="graph.html" title="Tune"></iframe>
+                <iframe id="graph-frame" src="graph.html" title="Tune" style="width: 50vw; height: 100%"></iframe>
+            </div>
+            <div class="resizable-frame" style="height: 100%">
+                <iframe id="tune-frame" src="tune.html?tune_id=2&name=Banshee" title="Tune" style="width: 50vw; height: 100%"></iframe>
             </div>
         </div>
     </div>
 
     <script>
-        function changeTuneFrame(newSrc) {
+        async function selectSet(setName) {
             const tune_frame = document.getElementById('tune-frame');
-            tune_frame.src = newSrc;
+            const response = await fetch('/set-info?setName=' + setName)
+            const data = await response.json()
+            tune_frame.src = `/set.html?set_id=${data[0].set_id}&description=${data[0].description}`;
         }
-        function changeSetFrame(newSrc) {
-            const set_frame = document.getElementById('set-frame');
-            set_frame.src = newSrc;
+        async function selectTune(tuneName) {
+            const tune_frame = document.getElementById('tune-frame');
+            const response = await fetch('/tune-info?tuneName=' + tuneName)
+            const data = await response.json()
+            tune_frame.src = `/tune.html?tune_id=${data[0].tune_id}&name=${data[0].name}&tune_url=${data[0].tune_url}`;
         }
         window.onload = async function() {
             const today = new Date();
@@ -85,8 +86,6 @@
             // Set default values
             startDateInput.value = formatDate(fiveYearsAgo);
             endDateInput.value = formatDate(today);
-            await fetchData(`/sessions-in-range?start=${formatDate(fiveYearsAgo)}&end=${formatDate(today)}`, populateSessions)
-            await fetchData(`/top-tunes`,populateTunes)
         };
 
         async function fetchData(endpoint, callBack, documentRef) {

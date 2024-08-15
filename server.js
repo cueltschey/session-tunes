@@ -295,6 +295,45 @@ app.get('/abc', (req, res) => {
     });
 });
 
+app.get('/tune-info', (req, res) => {
+    const tuneName = req.query.tuneName
+    if(!tuneName){
+      res.status(401).send("tuneName required")
+      return
+    }
+    const query = `
+          SELECT * From Tune
+          WHERE name = ?
+    `;
+    db.all(query, [tuneName], (err, rows) => {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+        res.json(rows);
+    });
+});
+
+app.get('/set-info', (req, res) => {
+    const setName = req.query.setName
+    if(!setName){
+      res.status(401).send("tuneName required")
+      return
+    }
+    const query = `
+          SELECT * From SetTable
+          WHERE description = ?
+    `;
+    db.all(query, [setName], (err, rows) => {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+        res.json(rows);
+    });
+});
+
+
+
+
 app.get('/graph/tune', async (req, res) => {
   try {
     const tuneName = req.query.tuneName;

@@ -55,6 +55,19 @@
                   }
               }
             });
+
+            network.on('click', function (params) {
+              // Check if a node was double-clicked
+              if (params.nodes.length > 0) {
+                  const nodeLabel = graphData.nodes.find(n => n.id == params.nodes[0]).label
+                  if(nodeLabel.includes(',')){
+                    window.parent.selectSet(nodeLabel)
+                  } else {
+                    window.parent.selectTune(nodeLabel)
+                  }
+              }
+            });
+
         }
 
 
