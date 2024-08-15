@@ -21,10 +21,15 @@
         async function fetchData() {
             const params = new URLSearchParams(window.location.search); // Get query parameters
             var tuneName = 'Banshee'
-            if(params.get('tuneName')){
+            var response = null
+            if(params.get('tuneName') != null){
               tuneName = params.get('tuneName')
+              response = await fetch(`/graph/tune?tuneName=${params.get('tuneName')}`);
+            } else if(params.get('setName') != null){
+              response = await fetch(`/graph/set?setName=${params.get('setName')}`);
+            } else {
+              response = await fetch('/graph/tune?tuneName=Banshee');
             }
-            const response = await fetch(`/graph/tune?tuneName=${tuneName}`);
             const data = await response.json();
             return data;
         }
@@ -42,8 +47,12 @@
             network.on('doubleClick', function (params) {
               // Check if a node was double-clicked
               if (params.nodes.length > 0) {
-                  const nodeId = params.nodes[0];
-                  window.location.href = '/graph.html?tuneName=' + graphData.nodes.find(n => n.id == nodeId).label;
+                  const nodeLabel = graphData.nodes.find(n => n.id == params.nodes[0]).label
+                  if(nodeLabel.includes(',')){
+                    window.location.href = '/graph.html?setName=' + nodeLabel;
+                  } else {
+                    window.location.href = '/graph.html?tuneName=' + nodeLabel;
+                  }
               }
             });
         }

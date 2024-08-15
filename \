@@ -367,7 +367,7 @@ app.get('/graph/tune', async (req, res) => {
 
 app.get('/graph/set', async (req, res) => {
   try {
-    const setDescription = req.query.setName;
+    const tuneName = req.query.tuneName;
     const result = await driver.executeQuery(
       `
       MATCH (s:SetTable {description: $setDescription})-[:CONTAINS]->(t:Tune)
@@ -377,7 +377,7 @@ app.get('/graph/set', async (req, res) => {
       WHERE t IN limitedTunes
       RETURN s, limitedTunes, COLLECT(otherSet) AS otherSets
       `,
-      { setDescription },
+      { tuneName },
       { database: 'neo4j' }  // Specify the database if needed
     );
 
@@ -387,42 +387,42 @@ app.get('/graph/set', async (req, res) => {
     result.records.forEach(record => {
       const setNode = record.get('s').properties;
       nodes.push({
-        id: setNode.set_id,
-        label: setNode.description,
+        id: tuneNode.tune_id,
+        label: tuneNode.name,
         color: {background: 'yellow', border: "black"}
       });
 
-      const tunes = record.get('limitedTunes');
-      tunes.forEach(tune => {
-        const tuneNode = tune.properties;
-        if (!nodes.find(n => n.id === tuneNode.tune_id)) {
+      const sets = record.get('limitedSets');
+      sets.forEach(set => {
+        const setNode = set.properties;
+        if (!nodes.find(n => n.id === setNode.set_id)) {
           nodes.push({
-            id: tuneNode.tune_id,
-            label: tuneNode.name,
+            id: setNode.set_id,
+            label: setNode.description,
             color: {background: '#aaddaa', border: "black"}
           });
         }
       });
 
-      const otherTunes = record.get('otherSets').filter(set => set.properties.set_id != setNode.set_id);
-      otherTunes.forEach(otherSet => {
-        const otherSetNode = otherSet.properties;
-        if (otherSetNode.description.includes(",") && !nodes.find(n => n.id === otherSetNode.set_id)) {
+      const otherTunes = record.get('otherTunes').filter(tune => tune.properties.tune_id != tuneNode.tune_id);
+      otherTunes.forEach(otherTune => {
+        const otherTuneNode = otherTune.properties;
+        if (!nodes.find(n => n.id === otherTuneNode.tune_id)) {
           nodes.push({
-            id: otherSetNode.set_id,
-            label: otherSetNode.description,
+            id: otherTuneNode.tune_id,
+            label: otherTuneNode.name,
             color: { background: '#aaaadd', border: "black" }
           });
         }
-        nodes.filter(n => otherSetNode.description.includes(n.label) && n.label != otherSetNode.description).forEach(set => {
-          if(!edges.find(e => e.to === set.id && e.from === otherSetNode.set_id)){
-            edges.push({ from: otherSetNode.set_id, to: set.id });
+        nodes.filter(n => n.label.includes(otherTuneNode.name) && n.label != otherTuneNode.name).forEach(set => {
+          if(!edges.find(e => e.to === set.id && e.from === otherTuneNode.tune_id)){
+            edges.push({ from: otherTuneNode.tune_id, to: set.id });
           }
         });
       });
 
-      tunes.forEach(tune => {
-        const tuneNode = tune.properties;
+      sets.forEach(set => {
+        const setNode = set.properties;
         edges.push({ from: tuneNode.tune_id, to: setNode.set_id});
       });
     });
