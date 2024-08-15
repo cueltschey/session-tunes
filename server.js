@@ -3,6 +3,7 @@ const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const app = express();
 const PORT = process.env.PORT || 3000;
+const neo4j = require('neo4j-driver');
 
 app.use(express.static(path.join(__dirname, "dist")))
 
@@ -14,6 +15,25 @@ const db = new sqlite3.Database('mueller.db', (err) => {
         console.log('Connected to the SQLite database.');
     }
 });
+
+// Neo4j database connection
+const neo4jUri = 'neo4j+s://a36f2166.databases.neo4j.io';
+const neo4jUser = 'neo4j';
+const neo4jPassword = '1Mik7YKwO1IdAxbZMrhMGG_bpidd1gGSBusyi2a23go';
+const driver = neo4j.driver(neo4jUri, neo4j.auth.basic(neo4jUser, neo4jPassword));
+
+// Test Neo4j connection
+const session = driver.session();
+session.run('RETURN 1 AS result')
+    .then(() => {
+        console.log('Connected to the Neo4j database.');
+        session.close();
+    })
+    .catch(error => {
+        console.error('Error connecting to Neo4j:', error);
+        session.close();
+    });
+
 
 // GET the top 50 tunes
 app.get('/top-tunes', (req, res) => {
@@ -251,13 +271,16 @@ app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
 });
 
-// Close the database connection when the server is stopped
-process.on('SIGINT', () => {
+// Cleanup on server shutdown
+process.on('SIGINT', async () => {
+    console.log('Closing database connections...');
+    await driver.close();
     db.close((err) => {
         if (err) {
-            console.error('Error closing the database ' + err.message);
+            console.error('Error closing SQLite database:', err.message);
+        } else {
+            console.log('Closed the SQLite database connection.');
         }
-        console.log('Database connection closed.');
         process.exit(0);
     });
 });
