@@ -29,6 +29,7 @@
 <body>
 
 <h3 id="tune-title"></h3>
+<a id="graph-link">graph visualization<a>
 
 <button id="audio-button"></button>
 <label for="volumeControl">Volume:</label>
@@ -243,6 +244,7 @@
 
         async function initPageData() {
           const params = new URLSearchParams(window.location.search); // Get query parameters
+          document.getElementById('graph-link').href = `/graph.html?tuneName=${params.get('name')}`
           await fetchSets(params.get('tune_id'));
           audio_button  = document.getElementById('audio-button')
           audio_button.textContent = 'Generate Player'
