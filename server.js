@@ -158,10 +158,11 @@ app.get('/set', (req, res) => {
       return
     }
     const query = `
-          SELECT DISTINCT t.*
+          SELECT t.name, t.tune_id, t.name, t.tune_url, COUNT(ts.tune_id) as tune_count
           FROM Tune t
           JOIN TuneToSet ts ON t.tune_id = ts.tune_id
           WHERE ts.set_id = ?
+          GROUP BY t.name, t.tune_id, t.tune_url
           ORDER BY ts.tune_index ASC;    
     `;
     db.all(query, [set_id], (err, rows) => {
@@ -237,6 +238,28 @@ app.get('/tunes-in-range', (req, res) => {
 
     }
 
+    db.all(query, [start_date, end_date], (err, rows) => {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+        res.json(rows);
+    });
+});
+
+// GET all sessions in a range of dates
+app.get('/sessions-in-range', (req, res) => {
+    const start_date = req.query.start
+    const end_date = req.query.end
+    if(!start_date || !end_date){
+      res.status(401).send("range required")
+      return
+    }
+    const query = `
+          SELECT *
+          FROM Session s
+          WHERE s.session_date BETWEEN ? AND ?
+          ORDER BY s.session_date DESC;
+    `;
     db.all(query, [start_date, end_date], (err, rows) => {
         if (err) {
             return res.status(500).json({ error: err.message });
