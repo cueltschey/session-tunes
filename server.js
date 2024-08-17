@@ -162,7 +162,7 @@ app.get('/set', (req, res) => {
       return
     }
     const query = `
-          SELECT t.name, t.tune_id, t.name, t.tune_url, COUNT(ts.tune_id) as tune_count
+          SELECT t.name, t.tune_id, t.name, t.tune_url, t.abc, COUNT(ts.tune_id) as tune_count
           FROM Tune t
           JOIN TuneToSet ts ON t.tune_id = ts.tune_id
           WHERE ts.set_id = ?
